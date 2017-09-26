@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/shopware/shopware/5.2/engine/Shopware/Components/Plugin/schema/config.xsd">
+    <elements>
+        <element required="true" type="text">
+            <name>public_key</name>
+            <label lang="de">Public Key</label>
+            <label lang="en">Public Key</label>
+        </element>
+        <element required="true" type="text">
+            <name>private_key</name>
+            <label lang="en">Private Key</label>
+            <label lang="de">Private Key</label>
+        </element>
+        <element required="true" type="boolean">
+            <name>testmode</name>
+            <label lang="de">Testmode Aktiviert</label>
+            <label lang="en">Testmode Enabled</label>
+            <value>0</value>
+        </element>
+    </elements>
+</config>
