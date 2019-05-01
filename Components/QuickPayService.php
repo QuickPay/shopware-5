@@ -46,6 +46,7 @@ class QuickPayService
             'cancelurl'          => $cancelUrl,
             'callbackurl'        => $callbackUrl,
             'customer_email'     => $email,
+            'language'           => $this->getLanguageCode()
         ]);
 
         return $paymentLink->url;
@@ -133,5 +134,17 @@ class QuickPayService
     public function createPaymentToken($amount, $customerId)
     {
         return md5(implode('|', [$amount, $customerId]));
+    }
+
+    /**
+     * Get language code
+     *
+     * @return string
+     */
+    private function getLanguageCode()
+    {
+        $locale = Shopware()->Shop()->getLocale()->getLocale();
+
+        return substr($locale, 0, 2);
     }
 }
