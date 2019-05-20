@@ -61,6 +61,9 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
      */
     public function callbackAction()
     {
+        // Prevent error from missing template
+        $this->Front()->Plugins()->ViewRenderer()->setNoRender();
+
         //Validate & save order
         $responseBody = $this->Request()->getRawBody();
         $response = json_decode($responseBody);
