@@ -33,6 +33,17 @@ class QuickPayPayment extends Plugin
         ];
 
         $installer->createOrUpdate($context->getPlugin(), $options);
+        
+        $crud = $this->container->get('shopware_attribute.crud_service');
+        $crud->update('s_order_attributes', 'quickpay_payment_link', 'string', array(
+            'displayInBackend' => true,
+            'label' => 'QuickPay payment link'
+        ), null, false, 'NULL');
+        
+        Shopware()->Models()->generateAttributeModels(
+            array('s_order_attributes')
+        );
+        
     }
 
     /**
@@ -43,6 +54,15 @@ class QuickPayPayment extends Plugin
     public function uninstall(UninstallContext $context)
     {
         $this->setActiveFlag($context->getPlugin()->getPayments(), false);
+        
+        $crud = $this->container->get('shopware_attribute.crud_service');
+        try {
+            $crud->delete('s_order_attributes', 'quickpay_payment_link');
+        } catch (\Exception $e) {
+        }
+        Shopware()->Models()->generateAttributeModels(
+            array('s_order_attributes')
+        );
     }
 
     /**

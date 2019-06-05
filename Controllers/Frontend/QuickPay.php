@@ -50,6 +50,13 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
                 $this->getCallbackUrl()
             );
 
+            $repository = Shopware()->Models()->getRepository(\Shopware\Models\Order\Order::class);
+            $order = $repository->findOneBy(array(
+                'number' => $orderNumber
+            ));
+            $order->getAttribute()->setQuickpayPaymentLink($paymentLink);
+            Shopware()->Models()->flush($order->getAttribute());
+
             $this->redirect($paymentLink);
         } catch (\Exception $e) {
             die($e->getMessage());
