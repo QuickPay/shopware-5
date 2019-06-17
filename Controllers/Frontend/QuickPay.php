@@ -73,11 +73,8 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
                 //Check if payment is accepted
                 if ($response->accepted === true) {
 
-                    //Check is test mode is enabled
-                    $testmode = Shopware()->Config()->getByNamespace('QuickPayPayment', 'testmode');
-
                     //Cancel order if testmode is disabled and payment is test mode
-                    if (!$testmode && ($response->test_mode === true)) {
+                    if (!$this->checkTestMode($response)) {
 
                         //Set order as cancelled
                         $this->savePaymentStatus($response->order_id, $response->id, \Shopware\Models\Order\Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
@@ -119,7 +116,13 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
             return;
         }
         
-        $orderNumber = $this->saveOrder($payment->order_id, $payment->id, \Shopware\Models\Order\Status::PAYMENT_STATE_OPEN);
+        $state = \Shopware\Models\Order\Status::PAYMENT_STATE_OPEN;
+        if($payment->accepted && $this->checkTestMode($payment))
+        {
+            $state = \Shopware\Models\Order\Status::PAYMENT_STATE_RESERVED;
+        }
+        
+        $orderNumber = $this->saveOrder($payment->order_id, $payment->id, $state);
         
         $repository = Shopware()->Models()->getRepository(\Shopware\Models\Order\Order::class);
         $order = $repository->findOneBy(array(
@@ -194,5 +197,25 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
      */
     public function getWhitelistedCSRFActions() {
         return ['callback'];
+    }
+    
+    /**
+     * Check if the text_mode property of the payment matches the shop configuration
+     * 
+     * @param mixed $payment
+     * @return boolean
+     */
+    private function checkTestMode($payment)
+    {
+        //Check is test mode is enabled
+        $testmode = Shopware()->Config()->getByNamespace('QuickPayPayment', 'testmode');
+
+        //Check if test_mode property matches the configuration
+        if (!$testmode && ($payment->test_mode === true)) {
+
+            return false;
+        }   
+        
+        return true;
     }
 }
