@@ -12,31 +12,28 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
         $service = $this->container->get('quickpay_payment.quickpay_service');
 
         try {
-            $user = $this->getUser();
-            $billing = $user['billingaddress'];
-
-            $paymentId = $this->createPaymentUniqueId();
-            $token = $service->createPaymentToken($this->getAmount(), $billing['customernumber']);
-
-            //Save order and grab ordernumber
-            $orderNumber = $this->saveOrder($paymentId, $token, \Shopware\Models\Order\Status::PAYMENT_STATE_OPEN);
-
-            //Save orderNumber to session
-            Shopware()->Session()->offsetSet('quickpay_order_id', $orderNumber);
-            Shopware()->Session()->offsetSet('quickpay_order_token', $token);
-
             $paymentParameters = [
-                'order_id' => $orderNumber,
                 'currency' => $this->getCurrencyShortName(),
-                'variables' => [
-                    'payment_id' => $paymentId,
-                    'token' => $token
-                ],
             ];
-
-            //Create payment
-            $payment = $service->createPayment($paymentParameters);
-
+            
+            //Save order and grab ordernumber
+            $paymentId = Shopware()->Session()->offsetGet('quickpay_payment_id');
+            if(empty($paymentId))
+            {
+                //Create new QuickPay payment
+                $orderId = $service->createOrderId();
+                
+                $payment = $service->createPayment($orderId, $paymentParameters);
+            }
+            else
+            {
+                //Update existing QuickPay payment
+                $payment = $service->updatePayment($paymentId, $paymentParameters);
+            }
+            
+            // Save ID to session
+            Shopware()->Session()->offsetSet('quickpay_payment_id', $payment->id);
+            
             $user = $this->getUser();
             $email = $user['additional']['user']['email'];
 
@@ -49,14 +46,7 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
                 $this->getCancelUrl(),
                 $this->getCallbackUrl()
             );
-
-            $repository = Shopware()->Models()->getRepository(\Shopware\Models\Order\Order::class);
-            $order = $repository->findOneBy(array(
-                'number' => $orderNumber
-            ));
-            $order->getAttribute()->setQuickpayPaymentLink($paymentLink);
-            Shopware()->Models()->flush($order->getAttribute());
-
+            
             $this->redirect($paymentLink);
         } catch (\Exception $e) {
             die($e->getMessage());
@@ -86,24 +76,21 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
                 //Check if payment is accepted
                 if ($response->accepted === true) {
 
-                    //Check is test mode is enabled
-                    $testmode = Shopware()->Config()->getByNamespace('QuickPayPayment', 'testmode');
-
                     //Cancel order if testmode is disabled and payment is test mode
-                    if (!$testmode && ($response->test_mode === true)) {
+                    if (!$this->checkTestMode($response)) {
 
                         //Set order as cancelled
-                        $this->savePaymentStatus($response->variables->payment_id, $response->variables->token, \Shopware\Models\Order\Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
+                        $this->savePaymentStatus($response->order_id, $response->id, \Shopware\Models\Order\Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
                         Shopware()->PluginLogger()->info("Order attempted paid with testcard while testmode was disabled");
                         return;
                     }
 
                     //Set order as reserved
-                    $this->savePaymentStatus($response->variables->payment_id, $response->variables->token, \Shopware\Models\Order\Status::PAYMENT_STATE_RESERVED);
+                    $this->savePaymentStatus($response->order_id, $response->id, \Shopware\Models\Order\Status::PAYMENT_STATE_RESERVED);
                 }
             } else {
                 //Cancel order
-                $this->savePaymentStatus($response->variables->payment_id, $response->variables->token, \Shopware\Models\Order\Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
+                $this->savePaymentStatus($response->order_id, $response->id, \Shopware\Models\Order\Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
                 Shopware()->PluginLogger()->info('Checksum mismatch');
             }
         }
@@ -114,6 +101,42 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
      */
     public function successAction()
     {
+        /** @var \QuickPayPayment\Components\QuickPayService $service */
+        $service = $this->container->get('quickpay_payment.quickpay_service');
+        
+        $paymentId = Shopware()->Session()->offsetGet('quickpay_payment_id');
+        
+        if(empty($paymentId))
+        {
+            $this->redirect(['controller' => 'checkout', 'action' => 'confirm']);    
+            return;
+        }
+        
+        $payment = $service->getPayment($paymentId);
+        if(empty($payment) || !isset($payment->order_id))
+        {
+            $this->redirect(['controller' => 'checkout', 'action' => 'confirm']);    
+            return;
+        }
+        
+        $state = \Shopware\Models\Order\Status::PAYMENT_STATE_OPEN;
+        if($payment->accepted && $this->checkTestMode($payment))
+        {
+            $state = \Shopware\Models\Order\Status::PAYMENT_STATE_RESERVED;
+        }
+        
+        $orderNumber = $this->saveOrder($payment->order_id, $payment->id, $state);
+        
+        $repository = Shopware()->Models()->getRepository(\Shopware\Models\Order\Order::class);
+        $order = $repository->findOneBy(array(
+            'number' => $orderNumber
+        ));
+        $order->getAttribute()->setQuickpayPaymentLink($payment->link->url);
+        Shopware()->Models()->flush($order->getAttribute());
+        
+        //Remove ID from session
+        Shopware()->Session()->offsetUnset('quickpay_payment_id');
+        
         //Redirect to finish
         $this->redirect(['controller' => 'checkout', 'action' => 'finish']);
 
@@ -125,7 +148,7 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
      */
     public function cancelAction()
     {
-        $this->redirect(['controller' => 'checkout', 'action' => 'cancel']);
+        $this->redirect(['controller' => 'checkout', 'action' => 'confirm']);
     }
 
     /**
@@ -177,5 +200,25 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
      */
     public function getWhitelistedCSRFActions() {
         return ['callback'];
+    }
+    
+    /**
+     * Check if the text_mode property of the payment matches the shop configuration
+     * 
+     * @param mixed $payment
+     * @return boolean
+     */
+    private function checkTestMode($payment)
+    {
+        //Check is test mode is enabled
+        $testmode = Shopware()->Config()->getByNamespace('QuickPayPayment', 'testmode');
+
+        //Check if test_mode property matches the configuration
+        if (!$testmode && ($payment->test_mode === true)) {
+
+            return false;
+        }   
+        
+        return true;
     }
 }

@@ -2,6 +2,10 @@
 
 namespace QuickPayPayment\Components;
 
+use Exception;
+use Shopware\Components\Random;
+use function Shopware;
+
 class QuickPayService
 {
     private $baseUrl = 'https://api.quickpay.net';
@@ -9,22 +13,58 @@ class QuickPayService
     const METHOD_POST = 'POST';
     const METHOD_PUT = 'PUT';
     const METHOD_GET = 'GET';
+    const METHOD_PATCH = 'PATCH';
 
     /**
      * Create payment
      *
      * @param $orderId
-     * @param $currency
+     * @param $parameters
      * @return mixed
      */
-    public function createPayment($parameters)
+    public function createPayment($orderId, $parameters)
     {
+        $parameters['order_id'] = $orderId;
+        
         //Create payment
         $payment = $this->request(self::METHOD_POST, '/payments', $parameters);
 
         return $payment;
     }
 
+    /**
+     * Create payment
+     *
+     * @param $paymentId
+     * @param $parameters
+     * @return mixed
+     */
+    public function updatePayment($paymentId, $parameters)
+    {
+        $resource = sprintf('/payments/%s', $paymentId);
+        
+        //Update payment
+        $payment = $this->request(self::METHOD_PATCH, $resource, $parameters);
+
+        return $payment;
+    }
+    
+    /**
+     * Get payment information
+     * 
+     * @param $paymentId
+     * @return mixed
+     */
+    public function getPayment($paymentId)
+    {
+        $resource = sprintf('/payments/%s', $paymentId);
+        
+        //Get payment
+        $payment = $this->request(self::METHOD_GET, $resource);
+
+        return $payment;        
+    }
+    
     /**
      * Create payment link
      *
@@ -87,14 +127,14 @@ class QuickPayService
 
         //Validate reponsecode
         if (! in_array($responseCode, [200, 201, 202])) {
-            throw new \Exception('Invalid gateway response ' . $result);
+            throw new Exception('Invalid gateway response ' . $result);
         }
 
         $response = json_decode($result);
 
         //Check for JSON errors
         if (! $response || (json_last_error() !== JSON_ERROR_NONE)) {
-            throw new \Exception('Invalid json response');
+            throw new Exception('Invalid json response');
         }
 
         return $response;
@@ -125,18 +165,6 @@ class QuickPayService
     }
 
     /**
-     * Create payment token
-     *
-     * @param float $amount
-     * @param int $customerId
-     * @return string
-     */
-    public function createPaymentToken($amount, $customerId)
-    {
-        return md5(implode('|', [$amount, $customerId]));
-    }
-
-    /**
      * Get language code
      *
      * @return string
@@ -146,5 +174,15 @@ class QuickPayService
         $locale = Shopware()->Shop()->getLocale()->getLocale();
 
         return substr($locale, 0, 2);
+    }
+    
+    /**
+     * Creates a unique order id
+     * 
+     * @return string
+     */
+    public function createOrderId()
+    {
+        return Random::getAlphanumericString(20);
     }
 }

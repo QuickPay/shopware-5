@@ -6,6 +6,7 @@ use Shopware\Components\Plugin\Context\InstallContext;
 use Shopware\Components\Plugin\Context\UninstallContext;
 use Shopware\Components\Plugin\Context\ActivateContext;
 use Shopware\Components\Plugin\Context\DeactivateContext;
+use Shopware\Components\Plugin\Context\UpdateContext;
 use Shopware\Models\Payment\Payment;
 
 class QuickPayPayment extends Plugin
@@ -33,19 +34,21 @@ class QuickPayPayment extends Plugin
         ];
 
         $installer->createOrUpdate($context->getPlugin(), $options);
-        
-        $crud = $this->container->get('shopware_attribute.crud_service');
-        $crud->update('s_order_attributes', 'quickpay_payment_link', 'string', array(
-            'displayInBackend' => true,
-            'label' => 'QuickPay payment link'
-        ), null, false, 'NULL');
-        
-        Shopware()->Models()->generateAttributeModels(
-            array('s_order_attributes')
-        );
-        
+
+        $this->createAttributes();
     }
 
+    /**
+     * Update plugin
+     * 
+     * @param UpdateContext $context
+     */
+    public function update(UpdateContext $context)
+    {
+        $this->createAttributes();
+        
+    }
+    
     /**
      * Uninstall plugin
      *
@@ -55,14 +58,7 @@ class QuickPayPayment extends Plugin
     {
         $this->setActiveFlag($context->getPlugin()->getPayments(), false);
         
-        $crud = $this->container->get('shopware_attribute.crud_service');
-        try {
-            $crud->delete('s_order_attributes', 'quickpay_payment_link');
-        } catch (\Exception $e) {
-        }
-        Shopware()->Models()->generateAttributeModels(
-            array('s_order_attributes')
-        );
+        $this->removeAttributes();
     }
 
     /**
@@ -97,5 +93,39 @@ class QuickPayPayment extends Plugin
             $payment->setActive($active);
         }
         $em->flush();
+    }
+    
+    /**
+     * Create or update all Attributes
+     * 
+     */
+    private function createAttributes()
+    {
+                
+        $crud = $this->container->get('shopware_attribute.crud_service');
+        $crud->update('s_order_attributes', 'quickpay_payment_link', 'string', array(
+            'displayInBackend' => true,
+            'label' => 'QuickPay payment link'
+        ), null, false, 'NULL');
+        
+        Shopware()->Models()->generateAttributeModels(
+            array('s_order_attributes')
+        );
+        
+    }
+    
+    /**
+     * Remove all attributes
+     */
+    private function removeAttributes()
+    {
+        $crud = $this->container->get('shopware_attribute.crud_service');
+        try {
+            $crud->delete('s_order_attributes', 'quickpay_payment_link');
+        } catch (\Exception $e) {
+        }
+        Shopware()->Models()->generateAttributeModels(
+            array('s_order_attributes')
+        );        
     }
 }
