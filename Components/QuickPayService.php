@@ -3,8 +3,10 @@
 namespace QuickPayPayment\Components;
 
 use Exception;
+use QuickPayPayment\Models\QuickPayPayment;
 use Shopware\Components\Random;
 use function Shopware;
+use Shopware\Models\Customer\Customer;
 
 class QuickPayService
 {
@@ -22,13 +24,19 @@ class QuickPayService
      * @param $parameters
      * @return mixed
      */
-    public function createPayment($orderId, $parameters)
+    public function createPayment($userId, $orderId, $parameters)
     {
         $parameters['order_id'] = $orderId;
         
         //Create payment
         $payment = $this->request(self::METHOD_POST, '/payments', $parameters);
 
+        //Register payment in database 
+        $customer = Shopware()->Models()->find(Customer::class, $userId);
+        $entity = new QuickPayPayment($payment->id, $customer);
+        Shopware()->Models()->persist($entity);
+        Shopware()->Models()->flush($entity);
+        
         return $payment;
     }
 
@@ -63,6 +71,81 @@ class QuickPayService
         $payment = $this->request(self::METHOD_GET, $resource);
 
         return $payment;        
+    }
+    
+    /**
+     * Notify that a quickpay callback has been received
+     * 
+     * @param string $paymentId
+     * @param bool $accepted
+     */
+    public function registerCallback($paymentId, $accepted)
+    {
+        /** @var QuickPayPayment $payment */
+        $payment = Shopware()->Models()->find(QuickPayPayment::class, $paymentId);
+        
+        if(empty($payment))
+            return;
+        
+        $payment->registerCallback($accepted);
+        
+        Shopware()->Models()->flush($payment);
+    }
+    
+    /**
+     * Notify that the shopware order has been finished
+     * 
+     * @param string $paymentId
+     */
+    public function registerFinishedOrder($paymentId)
+    {
+        /** @var QuickPayPayment $payment */
+        $payment = Shopware()->Models()->find(QuickPayPayment::class, $paymentId);
+        
+        if(empty($payment))
+            return;
+        
+        $payment->registerFinishedOrder();
+        
+        Shopware()->Models()->flush($payment);
+    }
+    
+    public function getFailureCandidates()
+    {
+        $builder = Shopware()->Models()->getRepository(QuickPayPayment::class)->createQueryBuilder('payment');
+        $builder->where('payment.orderStatus = :status')
+                ->andWhere('payment.lastCallback IS NOT NULL')
+                ->andWhere('payment.paymentAccepted > 0')
+                ->setParameter('status', QuickPayPayment::ORDER_WAITING);
+        
+        $payments = $builder->getQuery()->execute();
+        
+        $result = [];
+        /** QuickPayPayment $payment) */
+        foreach ($payments as $payment)
+        {
+            $result[] = array(
+                "id" => $payment->getId(),
+                "customer" => $payment->getCustomer(),
+                "firstCallback" => $payment->getFirstCallback(),
+                "lastCallback" => $payment->getLastCallback()
+            );
+        }
+        
+        return $result;
+    }
+    
+    public function markAsFailed($paymentId)
+    {
+         /** @var QuickPayPayment $payment */
+        $payment = Shopware()->Models()->find(QuickPayPayment::class, $paymentId);
+        
+        if(empty($payment))
+            return;
+        
+        $payment->markAsFailed();
+        
+        Shopware()->Models()->flush($payment);
     }
     
     /**

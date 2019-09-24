@@ -1,14 +1,18 @@
 <?php
-use Shopware\Components\CSRFWhitelistAware;
 
-class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Frontend_Payment implements CSRFWhitelistAware
+use QuickPayPayment\Components\QuickPayService;
+use Shopware\Components\CSRFWhitelistAware;
+use Shopware\Models\Order\Order;
+use Shopware\Models\Order\Status;
+
+class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Frontend_Payment implements CSRFWhitelistAware
 {
     /**
      * Redirect to gateway
      */
     public function redirectAction()
     {
-        /** @var \QuickPayPayment\Components\QuickPayService $service */
+        /** @var QuickPayService $service */
         $service = $this->container->get('quickpay_payment.quickpay_service');
 
         try {
@@ -23,7 +27,7 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
                 //Create new QuickPay payment
                 $orderId = $service->createOrderId();
                 
-                $payment = $service->createPayment($orderId, $paymentParameters);
+                $payment = $service->createPayment($this->get('session')->offsetGet('sUserId'), $orderId, $paymentParameters);
             }
             else
             {
@@ -48,7 +52,7 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
             );
             
             $this->redirect($paymentLink);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             die($e->getMessage());
         }
     }
@@ -58,6 +62,9 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
      */
     public function callbackAction()
     {
+        /** @var QuickPayService $service */
+        $service = $this->container->get('quickpay_payment.quickpay_service');
+        
         // Prevent error from missing template
         $this->Front()->Plugins()->ViewRenderer()->setNoRender();
 
@@ -73,6 +80,16 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
 
             //Validate checksum
             if ($checksum === $submittedChecksum) {
+            
+                $service->registerCallback($response->id, $response->accepted);
+                
+                //Check if order has been finished yet
+                if(!$this->orderExists($response->order_id, $response->id)) {
+                    //Order does not yet exist in the database. callback has to be resent
+                    $this->Response()->setHttpResponseCode(400);
+                    return;
+                }
+                
                 //Check if payment is accepted
                 if ($response->accepted === true) {
 
@@ -80,17 +97,17 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
                     if (!$this->checkTestMode($response)) {
 
                         //Set order as cancelled
-                        $this->savePaymentStatus($response->order_id, $response->id, \Shopware\Models\Order\Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
+                        $this->savePaymentStatus($response->order_id, $response->id, Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
                         Shopware()->PluginLogger()->info("Order attempted paid with testcard while testmode was disabled");
                         return;
                     }
 
                     //Set order as reserved
-                    $this->savePaymentStatus($response->order_id, $response->id, \Shopware\Models\Order\Status::PAYMENT_STATE_RESERVED);
+                    $this->savePaymentStatus($response->order_id, $response->id, Status::PAYMENT_STATE_RESERVED);
                 }
             } else {
                 //Cancel order
-                $this->savePaymentStatus($response->order_id, $response->id, \Shopware\Models\Order\Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
+                $this->savePaymentStatus($response->order_id, $response->id, Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
                 Shopware()->PluginLogger()->info('Checksum mismatch');
             }
         }
@@ -101,7 +118,7 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
      */
     public function successAction()
     {
-        /** @var \QuickPayPayment\Components\QuickPayService $service */
+        /** @var QuickPayService $service */
         $service = $this->container->get('quickpay_payment.quickpay_service');
         
         $paymentId = Shopware()->Session()->offsetGet('quickpay_payment_id');
@@ -119,15 +136,11 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
             return;
         }
         
-        $state = \Shopware\Models\Order\Status::PAYMENT_STATE_OPEN;
-        if($payment->accepted && $this->checkTestMode($payment))
-        {
-            $state = \Shopware\Models\Order\Status::PAYMENT_STATE_RESERVED;
-        }
+        $orderNumber = $this->saveOrder($payment->order_id, $payment->id, Status::PAYMENT_STATE_OPEN);
         
-        $orderNumber = $this->saveOrder($payment->order_id, $payment->id, $state);
+        $service->registerFinishedOrder($payment->id);
         
-        $repository = Shopware()->Models()->getRepository(\Shopware\Models\Order\Order::class);
+        $repository = Shopware()->Models()->getRepository(Order::class);
         $order = $repository->findOneBy(array(
             'number' => $orderNumber
         ));
@@ -138,7 +151,7 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
         Shopware()->Session()->offsetUnset('quickpay_payment_id');
         
         //Redirect to finish
-        $this->redirect(['controller' => 'checkout', 'action' => 'finish']);
+        $this->redirect(['controller' => 'checkout', 'action' => 'finish', 'sUniqueID' => $payment->id]);
 
         return;
     }
@@ -203,7 +216,7 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
     }
     
     /**
-     * Check if the text_mode property of the payment matches the shop configuration
+     * Check if the test_mode property of the payment matches the shop configuration
      * 
      * @param mixed $payment
      * @return boolean
@@ -221,4 +234,28 @@ class Shopware_Controllers_Frontend_QuickPay extends \Shopware_Controllers_Front
         
         return true;
     }
+    
+    /**
+     * Check if the order with the provided IDs has already been finalized
+     * (i.e. been persisted to the database)
+     * 
+     * @param string $transactionId
+     * @param string $paymentUniqueId
+     * @return bool
+     */
+    private function orderExists($transactionId, $paymentUniqueId)
+    {
+        $sql = '
+            SELECT ordernumber FROM s_order
+            WHERE transactionID=? AND temporaryID=?
+            AND status!=-1
+        ';
+        $orderNumber = Shopware()->Db()->fetchOne($sql, [
+                $transactionId,
+                $paymentUniqueId
+            ]);
+        
+        return !empty($orderNumber);
+    }
+    
 }

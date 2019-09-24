@@ -3,7 +3,7 @@
     <label lang="de">QuickPay Payment</label>
     <label lang="en">QuickPay Payment</label>
 
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <link>https://quickpay.net</link>
     <author>QuickPay ApS</author>
     <compatibility minVersion="5.2.0" />

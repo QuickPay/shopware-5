@@ -1,13 +1,16 @@
 <?php
 namespace QuickPayPayment;
 
+use Doctrine\ORM\Tools\SchemaTool;
+use Shopware\Components\Model\ModelManager;
 use Shopware\Components\Plugin;
-use Shopware\Components\Plugin\Context\InstallContext;
-use Shopware\Components\Plugin\Context\UninstallContext;
 use Shopware\Components\Plugin\Context\ActivateContext;
 use Shopware\Components\Plugin\Context\DeactivateContext;
+use Shopware\Components\Plugin\Context\InstallContext;
+use Shopware\Components\Plugin\Context\UninstallContext;
 use Shopware\Components\Plugin\Context\UpdateContext;
 use Shopware\Models\Payment\Payment;
+use QuickPayPayment\Models\QuickPayPayment as PaymentModel;
 
 class QuickPayPayment extends Plugin
 {
@@ -34,7 +37,9 @@ class QuickPayPayment extends Plugin
         ];
 
         $installer->createOrUpdate($context->getPlugin(), $options);
-
+        
+        $this->createTables();
+        
         $this->createAttributes();
     }
 
@@ -46,7 +51,9 @@ class QuickPayPayment extends Plugin
     public function update(UpdateContext $context)
     {
         $this->createAttributes();
-        
+
+        $this->createTables();
+
     }
     
     /**
@@ -58,7 +65,12 @@ class QuickPayPayment extends Plugin
     {
         $this->setActiveFlag($context->getPlugin()->getPayments(), false);
         
-        $this->removeAttributes();
+        if(!$context->keepUserData())
+        {
+            $this->removeAttributes();
+
+            $this->removeTables();
+        }
     }
 
     /**
@@ -128,4 +140,39 @@ class QuickPayPayment extends Plugin
             array('s_order_attributes')
         );        
     }
+    
+    /**
+     * Create all tables
+     */
+    private function createTables()
+    {
+        /** @var ModelManager $entityManager */
+        $entityManager = $this->container->get('models');
+        
+        $tool = new SchemaTool($entityManager);
+        
+        $classMetaData = [
+            $entityManager->getClassMetadata(PaymentModel::class)
+        ];
+        
+        $tool->updateSchema($classMetaData, true);
+    }
+    
+    /**
+     * Remove all tables
+     */
+    private function removeTables()
+    {
+        /** @var ModelManager $entityManager */
+        $entityManager = $this->container->get('models');
+        
+        $tool = new SchemaTool($entityManager);
+        
+        $classMetaData = [
+            $entityManager->getClassMetadata(PaymentModel::class)
+        ];
+        
+        $tool->dropSchema($classMetaData);
+    }
+
 }
