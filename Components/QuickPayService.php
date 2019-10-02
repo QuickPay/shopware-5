@@ -5,8 +5,8 @@ namespace QuickPayPayment\Components;
 use Exception;
 use QuickPayPayment\Models\QuickPayPayment;
 use Shopware\Components\Random;
-use function Shopware;
 use Shopware\Models\Customer\Customer;
+use function Shopware;
 
 class QuickPayService
 {
@@ -20,22 +20,31 @@ class QuickPayService
     /**
      * Create payment
      *
-     * @param $orderId
-     * @param $parameters
-     * @return mixed
+     * @param integer $userId Id of the ordering user
+     * @param mixed $basket Basket of the order
+     * @param string $currency Short name of the used currency
+     * @param integer $amount Amount to pay in cents
+     * @return \QuickPayPayment\Models\QuickPayPayment
      */
-    public function createPayment($userId, $orderId, $parameters)
+    public function createPayment($userId, $basket, $amount, $currency)
     {
-        $parameters['order_id'] = $orderId;
+        $orderId = $this->createOrderId();
+        
+        $parameters = [
+            'currency' => $currency,
+            'order_id' => $orderId
+        ];
         
         //Create payment
-        $payment = $this->request(self::METHOD_POST, '/payments', $parameters);
+        $paymentData = $this->request(self::METHOD_POST, '/payments', $parameters);
 
         //Register payment in database 
         $customer = Shopware()->Models()->find(Customer::class, $userId);
-        $entity = new QuickPayPayment($payment->id, $customer);
-        Shopware()->Models()->persist($entity);
-        Shopware()->Models()->flush($entity);
+        
+        $payment = new QuickPayPayment($paymentData->id, $orderId, $customer, $amount);
+        
+        Shopware()->Models()->persist($payment);
+        Shopware()->Models()->flush($payment);
         
         return $payment;
     }
@@ -43,128 +52,187 @@ class QuickPayService
     /**
      * Create payment
      *
-     * @param $paymentId
-     * @param $parameters
-     * @return mixed
+     * @param string $paymentId Id of the QuickPayPayment
+     * @param mixed $basket The current basket
+     * @param integer $amount Amount to pay in cents
+     * @return \QuickPayPayment\Models\QuickPayPayment
      */
-    public function updatePayment($paymentId, $parameters)
+    public function updatePayment($paymentId, $basket, $amount)
     {
+        $parameters = [];
+        
         $resource = sprintf('/payments/%s', $paymentId);
         
         //Update payment
-        $payment = $this->request(self::METHOD_PATCH, $resource, $parameters);
+        $paymentData = $this->request(self::METHOD_PATCH, $resource, $parameters);
 
+        $payment = $this->getPayment($paymentId);
+        
+        //Update amount to pay
+        $payment->setAmount($amount);
+        Shopware()->Models()->flush($payment);
+        
         return $payment;
     }
     
     /**
-     * Get payment information
+     * Get payment by id
      * 
-     * @param $paymentId
-     * @return mixed
+     * @param integer $paymentId Id of the current basket
+     * @return \QuickPayPayment\Models\QuickPayPayment
      */
     public function getPayment($paymentId)
     {
-        $resource = sprintf('/payments/%s', $paymentId);
-        
-        //Get payment
-        $payment = $this->request(self::METHOD_GET, $resource);
-
-        return $payment;        
-    }
-    
-    /**
-     * Notify that a quickpay callback has been received
-     * 
-     * @param string $paymentId
-     * @param bool $accepted
-     */
-    public function registerCallback($paymentId, $accepted)
-    {
         /** @var QuickPayPayment $payment */
         $payment = Shopware()->Models()->find(QuickPayPayment::class, $paymentId);
         
         if(empty($payment))
-            return;
+            return null;
         
-        $payment->registerCallback($accepted);
-        
-        Shopware()->Models()->flush($payment);
+        return $payment;
     }
     
     /**
-     * Notify that the shopware order has been finished
+     * Register a callback
      * 
-     * @param string $paymentId
+     * @param QuickPayPayment $payment the linked payment object
+     * @param mixed $data data contained in the request body
      */
-    public function registerFinishedOrder($paymentId)
+    public function registerCallback($payment, $data)
     {
-        /** @var QuickPayPayment $payment */
-        $payment = Shopware()->Models()->find(QuickPayPayment::class, $paymentId);
+        $operations = $payment->getOperations();
         
-        if(empty($payment))
-            return;
-        
-        $payment->registerFinishedOrder();
-        
-        Shopware()->Models()->flush($payment);
-    }
-    
-    public function getFailureCandidates()
-    {
-        $builder = Shopware()->Models()->getRepository(QuickPayPayment::class)->createQueryBuilder('payment');
-        $builder->where('payment.orderStatus = :status')
-                ->andWhere('payment.lastCallback IS NOT NULL')
-                ->andWhere('payment.paymentAccepted > 0')
-                ->setParameter('status', QuickPayPayment::ORDER_WAITING);
-        
-        $payments = $builder->getQuery()->execute();
-        
-        $result = [];
-        /** QuickPayPayment $payment) */
-        foreach ($payments as $payment)
+        //Sort Operations by Id
+        $operationsById = array();
+        /** @var \QuickPayPayment\Models\QuickPayPaymentOperation $operation */
+        foreach($operations as $operation)
         {
-            $result[] = array(
-                "id" => $payment->getId(),
-                "customer" => $payment->getCustomer(),
-                "firstCallback" => $payment->getFirstCallback(),
-                "lastCallback" => $payment->getLastCallback()
-            );
+            if($operation->getOperationId() != null)
+                $operationsById[$operation->getOperationId()] = $operation;
+        }
+
+        //update operations with data from the callback
+        foreach($data->operations as $operation)
+        {
+            if(!isset($operationsById[$operation->id]))
+            {
+                $operationsById[$operation->id] = $this->handleNewOperation($payment, $operation);
+            }
+            else{
+                $operationsById[$operation->id]->update($operation);
+            }
         }
         
-        return $result;
+        //save changes made to the operations
+        Shopware()->Models()->flush($operationsById);
+    }
+     
+    /**
+     * Create a Quickpay payment operation and update the payment accordingly
+     * 
+     * @param QuickPayPayment $payment
+     * @param mixed $data
+     * @return \QuickPayPayment\Models\QuickPayPaymentOperation
+     */
+    public function handleNewOperation($payment, $data)
+    {
+        $operation = new \QuickPayPayment\Models\QuickPayPaymentOperation($payment, $data);
+        switch ($operation->getType())
+        {
+            case 'authorize':
+                $payment->addAuthorizedAmount($operation->getAmount());
+                
+                if($payment->getAmount() <= $payment->getAmountAuthorized())
+                {
+                    if($payment->getStatus() == QuickPayPayment::PAYMENT_CREATED
+                        || $payment->getStatus() == QuickPayPayment::PAYMENT_ACCEPTED)
+                    {
+                        $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_AUTHORIZED);
+                    }
+                }
+                
+                break;
+            
+            case 'capture':
+                $payment->addCapturedAmount($operation->getAmount());
+
+                if($payment->getAmount() <= $payment->getAmountCaptured())
+                {
+                    if($payment->getStatus() == QuickPayPayment::PAYMENT_FULLY_AUTHORIZED)
+                    {
+                        $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_CAPTURED);
+                    }
+                }
+
+                break;
+            
+            default:
+                if($data->accepted && $payment->getStatus() == QuickPayPayment::PAYMENT_CREATED)
+                {
+                    $payment->setStatus(QuickPayPayment::PAYMENT_ACCEPTED);
+                }
+        }
+        
+        //Save updates to the payment object
+        Shopware()->Models()->flush($payment);
+        //Persist the new operation
+        Shopware()->Models()->persist($operation);
+        Shopware()->Models()->flush($operation);
+        
+        return $operation;
     }
     
-    public function markAsFailed($paymentId)
+    /**
+     * Register a callback containing a bad checksum
+     * 
+     * @param QuickPayPayment $payment the linked payment object
+     * @param mixed $data data contained in the request body
+     */
+    public function registerFalseChecksumCallback($payment, $data)
+    {        
+        $this->handleNewOperation($payment, (object) array(
+            'type' => 'checksum_failure',
+            'id' => null,
+            'amount' => 0,
+            'created_at' => date(),
+            'payload' => $data
+        ));
+    }
+    
+    /**
+     * Register a callback containing wrong test mode settings
+     * 
+     * @param QuickPayPayment $payment the linked payment object
+     * @param mixed $data data contained in the request body
+     */
+    public function registerTestModeViolationCallback($payment, $data)
     {
-         /** @var QuickPayPayment $payment */
-        $payment = Shopware()->Models()->find(QuickPayPayment::class, $paymentId);
-        
-        if(empty($payment))
-            return;
-        
-        $payment->markAsFailed();
-        
-        Shopware()->Models()->flush($payment);
+        $this->handleNewOperation($payment, (object) array(
+            'type' => 'test_mode_violation',
+            'id' => null,
+            'amount' => 0,
+            'created_at' => date(),
+            'payload' => $data
+        ));
     }
     
     /**
      * Create payment link
      *
-     * @param $id
-     * @param $amount
-     * @param $email
-     * @param $continueUrl
-     * @param $cancelUrl
-     * @param $callbackUrl
+     * @param QuickPayPayment $payment QuickPay payment
+     * @param double $amount invoice amount of the order
+     * @param string $email Mail-address of the customer
+     * @param string $continueUrl redirect URL in case of success
+     * @param string $cancelUrl redirect URL in case of cancellation
+     * @param string $callbackUrl URL to send callback to
      *
-     * @return string
+     * @return string link for QuickPay payment
      */
-    public function createPaymentLink($id, $amount, $email, $continueUrl, $cancelUrl, $callbackUrl)
+    public function createPaymentLink($payment, $email, $continueUrl, $cancelUrl, $callbackUrl)
     {
-        $resource = sprintf('/payments/%s/link', $id);
+        $resource = sprintf('/payments/%s/link', $payment->getId());
         $paymentLink = $this->request(self::METHOD_PUT, $resource, [
-            'amount'             => $amount * 100, //Convert to cents
+            'amount'             => $payment->getAmount(),
             'continueurl'        => $continueUrl,
             'cancelurl'          => $cancelUrl,
             'callbackurl'        => $callbackUrl,
@@ -268,4 +336,6 @@ class QuickPayService
     {
         return Random::getAlphanumericString(20);
     }
+    
+    
 }

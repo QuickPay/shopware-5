@@ -6,69 +6,125 @@ use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use Shopware\Components\Model\ModelEntity;
 use Shopware\Models\Customer\Customer;
+use Shopware\Models\Order\Order;
 
 /**
  * @ORM\Entity
- * @ORM\Table(name="s_quickpay_payments")
+ * @ORM\Table(name="quickpay_payments")
  */
 class QuickPayPayment extends ModelEntity
 {
     /**
      * 
-     * @param string $id
+     * @param string $paymentId
+     * @param string orderId
      * @param Customer $customer
+     * @param integer $amount
      */
-    public function __construct($id, $customer)
+    public function __construct($paymentId, $orderId, $customer, $amount)
     {
-        $this->id = $id;
+        $this->id = $paymentId;
+        $this->orderId = $orderId;
+        $this->orderNumber = null;
         $this->customer = $customer;
         $this->createdAt = new DateTime();
-        $this->paymentAccepted = false;
-        $this->orderStatus = self::ORDER_WAITING;
-        $this->lastCallback = null;
-        $this->firstCallback = null;
+        $this->status = self::PAYMENT_CREATED;
+        $this->amount = $amount;
+        $this->amountAuthorized = 0;
+        $this->amountCaptured = 0;
+        $this->basketSignature = null;
     }
     
     /**
      * @ORM\Id
      * @ORM\Column(name="id", type="string")
+     * 
+     * @var string Id of the payment
      */
-    private $id;
+    protected $id;
     
     /**
      * @ORM\Column(type="datetime", name="created_at")
+     * 
+     * @var \DateTime Date of creation
      */
-    private $createdAt;
-    
+    protected $createdAt;
+
     /**
-     * @ORM\Column(type="datetime", name="first_callback", nullable=TRUE)
-     */
-    private $firstCallback;
-    
-    /**
-     * @ORM\Column(type="datetime", name="last_callback", nullable=TRUE)
-     */
-    private $lastCallback;
-    
-    /**
-     * @ORM\ManyToOne(targetEntity="\Shopware\Models\Customer\Customer")
-     * @ORM\JoinColumn(name="customer_id", referencedColumnName="id")
+     * @ORM\ManyToOne(targetEntity="Shopware\Models\Customer\Customer")
+     * @ORM\JoinColumn(name="customer_id", referencedColumnName="id", nullable=false)
+     * 
+     * @var Customer Customer linked to the order
      */
     protected $customer;
 
     /**
-     * @ORM\Column(type="boolean", name="payment_accepted")
+     * @ORM\Column(type="integer", name="status")
+     * 
+     * @var integer Status of the payment
      */
-    private $paymentAccepted;
-            
-    /**
-     * @ORM\Column(type="integer", name="order_status")
-     */
-    private $orderStatus;
+    protected $status;
     
-    const ORDER_WAITING = 0;
-    const ORDER_FINISHED = 1;
-    const ORDER_FAILED = 2;
+    const PAYMENT_CREATED = 0;
+    const PAYMENT_ACCEPTED = 1;
+    const PAYMENT_FULLY_AUTHORIZED = 2;
+    const PAYMENT_FULLY_CAPTURED = 3;
+    
+    /**
+     * @ORM\Column(name="order_number", nullable=true)
+     * 
+     * @var string The number of the linked order
+     */
+    protected $orderNumber;
+    
+    /**
+     * @ORM\Column(name="order_id", type="string")
+     * 
+     * @var string The Id used by QuickPay as order Id
+     */
+    protected $orderId;
+    
+    /**
+     * @ORM\Column(name="link", type="string", nullable=true)
+     * 
+     * @var string link for the payment
+     */
+    protected $link;
+    
+    /**
+     * @ORM\Column(name="amount", type="integer")
+     * 
+     * @var integer Amount to pay
+     */
+    protected $amount;
+    
+    /**
+     * @ORM\Column(name="amount_authorized", type="integer")
+     * 
+     * @var integer Amount authorized through QuickPay
+     */
+    protected $amountAuthorized;
+
+    /**
+     * @ORM\Column(name="amount_captured", type="integer")
+     *
+     * @var integer Amount captured through QuickPay
+     */
+    protected $amountCaptured;
+    
+    /**
+     * @ORM\Column(name="basket_signature", type="string", nullable=true)
+     * 
+     * @var string signature of the temporary basket
+     */
+    protected $basketSignature;
+    
+    /**
+     * @ORM\OneToMany(targetEntity="QuickPayPaymentOperation", mappedBy="payment", cascade={"persist"})
+     * 
+     * @var array List of operations
+     */
+    protected $operations;
     
     /**
      * Get the QuickPay payment id
@@ -79,64 +135,25 @@ class QuickPayPayment extends ModelEntity
     {
         return $this->id;
     }
-    
-    /**
-     * Check wether an accepting callback was received
-     * 
-     * @return bool
-     */
-    public function isPaymentAccepted()
-    {
-        return $this->paymentAccepted;
-    }
 
     /**
-     * Get when the first callback was received
+     * Get the order id used by QuickPay
      * 
-     * @return \DateTime|null
+     * @return string
      */
-    public function getFirstCallback() {
-        return $this->firstCallback;
+    public function getOrderId()
+    {
+        return $this->orderId;
     }
     
     /**
-     * Get when the last callback was received
+     * Get the date of creation
      * 
-     * @return \DateTime|null
+     * @return \DateTime
      */
-    public function getLastCallback() {
-        return $this->lastCallback;
-    }
-    
-    /**
-     * Notify of a received callback
-     * 
-     * @param bool $accepted true if the payment was accepted
-     */
-    public function registerCallback($accepted)
+    public function getCreatedAt()
     {
-        $this->paymentAccepted = $accepted;
-        $this->lastCallback = new DateTime();
-        if($this->firstCallback === null)
-        {
-            $this->firstCallback = $this->lastCallback;
-        }
-    }
-    
-    /**
-     * Notify that the associated order has been finished
-     */
-    public function registerFinishedOrder()
-    {
-        $this->orderStatus = self::ORDER_FINISHED;
-    }
-    
-    /**
-     * Notify that the associated order was not finished correctly
-     */
-    public function markAsFailed()
-    {
-        $this->orderStatus = self::ORDER_FAILED;
+        return $this->createdAt;
     }
     
     /**
@@ -147,5 +164,171 @@ class QuickPayPayment extends ModelEntity
     public function getCustomer()
     {
         return $this->customer;
+    }
+    
+    /**
+     * Get the status of the payment
+     * 
+     * @return integer
+     */
+    public function getStatus()
+    {
+        return $this->status;
+    }
+    
+    /**
+     * Set the status of the payment
+     * 
+     * @param integer $status
+     */
+    public function setStatus($status)
+    {
+    $this->status = $status;
+    }
+    
+    /**
+     * Get the linked order
+     * 
+     * @return string|null
+     */
+    public function getOrderNumber()
+    {
+        return $this->orderNumber;
+    }
+    
+    /**
+     * get the object of the linked order
+     * 
+     * @return Order
+     */
+    public function getOrder()
+    {
+        if($this->orderNumber == null)
+        {
+            return null;
+        }
+        
+        $rep = Shopware()->Models()->getRepository(Order::class);
+        return $rep->findOneBy(['ordernumber' => $this->orderNumber]);
+    }
+    
+    /**
+     * Set the number of the linked order
+     * 
+     * @param string $orderNumber
+     */
+    public function setOrderNumber($orderNumber)
+    {
+        $this->orderNumber = $orderNumber;
+    }
+    
+    /**
+     * Get the amount authorized to pay
+     * 
+     * @return integer amount in cents
+     */
+    public function getAmount()
+    {
+        return $this->amount;
+    }
+    
+    /**
+     * Set the amount to pay
+     * 
+     * @param integer $amount Amount to pay in cents
+     */
+    public function setAmount($amount)
+    {
+        $this->amount = $amount;
+    }
+    
+    /**
+     * Get the amount authorized through Quickpay
+     * 
+     * @return integer amount in cents
+     */
+    public function getAmountAuthorized()
+    {
+        return $this->amountAuthorized;
+    }
+    
+    /**
+     * Get the amount captured through Quickpay
+     * 
+     * @return integer amount in cents
+     */
+    public function getAmountCaptured()
+    {
+        return $this->amountCaptured;
+    }
+    
+    /**
+     * Get the signature of the temporary basket
+     * 
+     * @return string signature of the basket
+     */
+    public function getBasketSignature()
+    {
+        return $this->basketSignature;
+    }
+    
+    /**
+     * Set the signature of the temporary basket
+     * 
+     * @param string $signature the signature of the basket
+     */
+    public function setBasketSignature($signature)
+    {
+        $this->basketSignature = $signature;
+    }
+    
+    /**
+     * Get the List of linked operations
+     * 
+     * @return array operations for the payment
+     */
+    public function getOperations()
+    {
+        return $this->operations;
+    }
+    
+    /**
+     * Get the payment link
+     * 
+     * @return string
+     */
+    public function getLink()
+    {
+        return $this->link;
+    }
+    
+    /**
+     * Set the payment link
+     * 
+     * @param string $link link to pay via QuickPay
+     */
+    public function setLink($link)
+    {
+        $this->link = $link;
+    }
+    
+    /**
+     * Add value to the amount of authorized payments
+     * 
+     * @param integer $amount the authorized amount
+     */
+    public function addAuthorizedAmount($amount)
+    {
+        $this->amountAuthorized += $amount;
+    }
+    
+    /**
+     * Add value to the amount of captured payments
+     * 
+     * @param integer $amount the captured amount
+     */
+    public function addCapturedAmount($amount)
+    {
+        $this->amountCaptured += $amount;
     }
 }
