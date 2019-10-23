@@ -330,14 +330,25 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             case QuickPayPayment::PAYMENT_FULLY_AUTHORIZED:
                 $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_RESERVED);
                 break;
+            case QuickPayPayment::PAYMENT_PARTLY_CAPTURED:
             case QuickPayPayment::PAYMENT_FULLY_CAPTURED:
-                $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_COMPLETELY_PAID);
+                if($payment->getAmountCaptured() >= $payment->getOrder()->getInvoiceAmount())
+                {
+                    $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_COMPLETELY_PAID);
+                }
+                else
+                {
+                    $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_PARTIALLY_PAID);
+                }
                 break;
             case QuickPayPayment::PAYMENT_CANCELLED:
                 $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
                 break;
-            case QuickPayPayment::PAYMENT_REFUNDED:
+            case QuickPayPayment::PAYMENT_FULLY_REFUNDED:
                 $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
+                break;
+            case QuickPayPayment::PAYMENT_INVALIDATED:
+                $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_REVIEW_NECESSARY);
                 break;
         }
     }

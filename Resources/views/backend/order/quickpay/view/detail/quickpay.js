@@ -81,7 +81,8 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
         return {
             id: payment.get('id'),
             amountAuthorized: payment.get('amountAuthorized'),
-            amountCaptured: payment.get('amountCaptured')
+            amountCaptured: payment.get('amountCaptured'),
+            amountRefunded: payment.get('amountRefunded')
         };
     },
 
@@ -107,7 +108,7 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
             action: 'capturePayment',
             disabled: status !== 5, //Only fully authorized
             handler: function() {
-                me.fireEvent('showCaptureConfirmWindow', me.getPaymentData(), me);
+                me.fireEvent('showCaptureConfirmWindow', me.getPaymentData(), me.record, me);
             }
         });
 
@@ -117,7 +118,7 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
             action: 'cancelPayment',
             disabled: status >= 10, //Capture not yet requested
             handler: function() {
-                me.fireEvent('showCancelConfirmWindow', me.getPaymentData(), me);
+                me.fireEvent('showCancelConfirmWindow', me.getPaymentData(), me.record, me);
             }
         });
 
@@ -127,7 +128,7 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
             action: 'refundPayment',
             disabled: status !== 15, //only fully captured
             handler: function() {
-                me.fireEvent('showRefundConfirmWindow', me.getPaymentData(), me);
+                me.fireEvent('showRefundConfirmWindow', me.getPaymentData(), me.record, me);
             }
         });
         
@@ -228,9 +229,9 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
         
         var status = payment.get('status');
         
-        me.captureButton.setDisabled(status !== 5);
-        me.cancelButton.setDisabled(status >= 10);
-        me.refundButton.setDisabled(status !== 15);
+        me.captureButton.setDisabled(status !== 5 && status !== 12); //Only FULLY_AUTHORIZED or PARTLY_CAPTURED
+        me.cancelButton.setDisabled(status >= 10); //No capture requested yet
+        me.refundButton.setDisabled(status !== 12 && status !== 15 && status !== 32); //Only PARTLY_CAPTURED, FULLY_CAPTURED and PARTLY_REFUNDED
     },
     
     updateFields: function(payment)

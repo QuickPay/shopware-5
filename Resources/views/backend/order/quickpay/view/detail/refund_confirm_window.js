@@ -31,10 +31,15 @@ Ext.define('Shopware.apps.Order.QuickPay.view.detail.RefundConfirmWindow',
         
         var props = me.callParent(arguments);
         
+        var amount = me.record.get('invoiceAmount') * 100;
+        
         props.message = me.snippets.text;
         props.amountLabel = me.snippets.amountlabel;
-        props.maxAmount = me.data.amountCaptured;
-        props.amount = props.maxAmount;
+        props.maxAmount = me.data.amountCaptured - me.data.amountRefunded;
+        if(amount > me.data.amountCaptured)
+            props.amount = me.data.amountCaptured - amount;
+        else
+            props.amount = me.data.amountCaptured;
         
         return props;
     }

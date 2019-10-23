@@ -84,7 +84,7 @@ Ext.define('Shopware.apps.Order.QuickPay.controller.Detail',
         }});
     },
     
-    onShowCaptureConfirmWindow: function(data, source)
+    onShowCaptureConfirmWindow: function(data, record, source)
     {
         var me = this;
 
@@ -95,13 +95,14 @@ Ext.define('Shopware.apps.Order.QuickPay.controller.Detail',
 
         me.captureConfirmWindow = Ext.create('Shopware.apps.Order.QuickPay.view.detail.CaptureConfirmWindow', {
             data: data,
+            record: record,
             source: source
         }).show(undefined, function() {
             this.subApplication = me.subApplication;
         });
     },
     
-    onShowCancelConfirmWindow: function(data, source)
+    onShowCancelConfirmWindow: function(data, record, source)
     {
         var me = this;
 
@@ -112,13 +113,14 @@ Ext.define('Shopware.apps.Order.QuickPay.controller.Detail',
 
         me.cancelConfirmWindow = Ext.create('Shopware.apps.Order.QuickPay.view.detail.CancelConfirmWindow', {
             data: data,
+            record: record,
             source: source
         }).show(undefined, function() {
             this.subApplication = me.subApplication;
         });
     },
     
-    onShowRefundConfirmWindow: function(data, source)
+    onShowRefundConfirmWindow: function(data, record, source)
     {
         var me = this;
 
@@ -129,6 +131,7 @@ Ext.define('Shopware.apps.Order.QuickPay.controller.Detail',
 
         me.refundConfirmWindow = Ext.create('Shopware.apps.Order.QuickPay.view.detail.RefundConfirmWindow', {
             data: data,
+            record: record,
             source: source
         }).show(undefined, function() {
             this.subApplication = me.subApplication;

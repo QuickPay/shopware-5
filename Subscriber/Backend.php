@@ -64,7 +64,7 @@ class Backend implements SubscriberInterface
                 $db = Shopware()->Db();
 
                 foreach($arrAssignedData as $key => $order) {
-                    $row = $db->fetchRow('SELECT id as quickpay_payment_id, status as quickpay_payment_status, amount_authorized as quickpay_amount_authorized, amount_captured as quickpay_amount_captured FROM quickpay_payments WHERE order_number = ?', [$order["number"]], \Zend_Db::FETCH_ASSOC);
+                    $row = $db->fetchRow('SELECT id as quickpay_payment_id, status as quickpay_payment_status, amount_authorized as quickpay_amount_authorized, amount_captured as quickpay_amount_captured, amount_refunded as quickpay_amount_refunded FROM quickpay_payments WHERE order_number = ?', [$order["number"]], \Zend_Db::FETCH_ASSOC);
                     if($row)
                     {
                         $arrAssignedData[$key] = array_merge($arrAssignedData[$key], $row);    

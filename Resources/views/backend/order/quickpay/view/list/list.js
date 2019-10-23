@@ -62,7 +62,7 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.List',
                         record = store.getAt(rowIndex);
                         
                         if(me.isQuickpayOrder(record) && me.isCaptureEnabled(record))
-                            me.fireEvent('showCaptureConfirmWindow', me.getPaymentData(record), me);
+                            me.fireEvent('showCaptureConfirmWindow', me.getPaymentData(record), record, me);
                     },
                     getClass: function(value, metadata, record)
                     {                
@@ -95,7 +95,8 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.List',
         return {
             id: record.get('quickpay_payment_id'),
             amountAuthorized: record.get('quickpay_amount_authorized'),
-            amountCaptured: record.get('quickpay_amount_captured')
+            amountCaptured: record.get('quickpay_amount_captured'),
+            amountRefunded: record.get('quickpay_amount_refunded')
         };
     }
 

@@ -5,4 +5,5 @@
         { name: 'quickpay_payment_status', type: 'int' },
         { name: 'quickpay_amount_authorized', type: 'int' },
         { name: 'quickpay_amount_captured', type: 'int' },
+        { name: 'quickpay_amount_refunded', type: 'int' },
 //{/block}

@@ -171,7 +171,7 @@ class QuickPayService
                 }
                 else
                 {
-                    $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_AUTHORIZED);
+                    $payment->setStatus(QuickPayPayment::PAYMENT_PARTLY_CAPTURED);
                 }
 
                 break;
@@ -187,16 +187,29 @@ class QuickPayService
                 break;
             
             case 'refund_request':
+                
                 $payment->setStatus(QuickPayPayment::PAYMENT_REFUND_REQUSTED);
                 
                 break;
                 
             case 'refund':
-
-                $payment->setStatus(QuickPayPayment::PAYMENT_REFUNDED);
+                $payment->addRefundedAmount($operation->getAmount());
+                if($payment->getAmountCaptured() <= $payment->getAmountRefunded())
+                {
+                    $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_REFUNDED);
+                }
+                else
+                {
+                    $payment->setStatus(QuickPayPayment::PAYMENT_PARTLY_REFUNDED);
+                }
 
                 break;
             
+            case 'checksum_failure':
+            case 'test_mode_violation':
+                $payment->setStatus(QuickPayPayment::PAYMENT_INVALIDATED);
+                break;
+                
             default:
                 if($data->accepted && $payment->getStatus() == QuickPayPayment::PAYMENT_CREATED)
                 {
@@ -280,7 +293,8 @@ class QuickPayService
      */
     public function requestCapture($payment, $amount)
     {
-        if($payment->getStatus() != QuickPayPayment::PAYMENT_FULLY_AUTHORIZED)
+        if($payment->getStatus() != QuickPayPayment::PAYMENT_FULLY_AUTHORIZED
+            && $payment->getStatus() != QuickPayPayment::PAYMENT_PARTLY_CAPTURED)
         {
             throw new Exception('Invalid payment state');
         }
@@ -355,12 +369,14 @@ class QuickPayService
      */
     public function requestRefund($payment, $amount)
     {
-        if($payment->getStatus() != QuickPayPayment::PAYMENT_FULLY_CAPTURED)
+        if($payment->getStatus() != QuickPayPayment::PAYMENT_FULLY_CAPTURED
+            && $payment->getStatus() != QuickPayPayment::PAYMENT_PARTLY_CAPTURED
+            && $payment->getStatus() != QuickPayPayment::PAYMENT_PARTLY_REFUNDED)
         {
             throw new Exception('Invalid payment state');
         }
         
-        if($amount <= 0 || $amount != $payment->getAmountCaptured())
+        if($amount <= 0 || $amount > $payment->getAmountCaptured() - $payment->getAmountRefunded())
         {
             throw new Exception('Invalid amount');
         }

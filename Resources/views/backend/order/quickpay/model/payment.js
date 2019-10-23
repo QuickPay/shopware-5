@@ -12,7 +12,8 @@ Ext.define('Shopware.apps.Order.QuickPay.model.Payment',
         { name: 'link', type: 'string' },
         { name: 'amount', type: 'int' },
         { name: 'amountAuthorized', type: 'int' },
-        { name: 'amountCaptured', type: 'int' }
+        { name: 'amountCaptured', type: 'int' },
+        { name: 'amountRefunded', type: 'int' }
     ],
     
     hasMany: { model: 'Shopware.apps.Order.QuickPay.model.Operation', name: 'operations' },

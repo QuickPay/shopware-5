@@ -32,6 +32,7 @@ class QuickPayPayment extends ModelEntity
         $this->amount = $amount;
         $this->amountAuthorized = 0;
         $this->amountCaptured = 0;
+        $this->amountRefunded = 0;
         $this->basketSignature = null;
     }
     
@@ -69,11 +70,14 @@ class QuickPayPayment extends ModelEntity
     const PAYMENT_ACCEPTED = 1;
     const PAYMENT_FULLY_AUTHORIZED = 5;
     const PAYMENT_CAPTURE_REQUESTED = 10;
+    const PAYMENT_PARTLY_CAPTURED = 12;
     const PAYMENT_FULLY_CAPTURED = 15;
     const PAYMENT_CANCEL_REQUSTED = 20;
     const PAYMENT_CANCELLED = 25;
     const PAYMENT_REFUND_REQUSTED = 30;
-    const PAYMENT_REFUNDED = 35;
+    const PAYMENT_PARTLY_REFUNDED = 32;
+    const PAYMENT_FULLY_REFUNDED = 35;
+    const PAYMENT_INVALIDATED = 100;
     
     /**
      * @ORM\Column(name="order_number", nullable=true)
@@ -116,6 +120,13 @@ class QuickPayPayment extends ModelEntity
      * @var integer Amount captured through QuickPay
      */
     protected $amountCaptured;
+    
+    /**
+     * @ORM\Column(name="amount_refunded", type="integer")
+     *
+     * @var integer Amount refunded through QuickPay
+     */
+    protected $amountRefunded;
     
     /**
      * @ORM\Column(name="basket_signature", type="string", nullable=true)
@@ -268,6 +279,16 @@ class QuickPayPayment extends ModelEntity
     }
     
     /**
+     * Get the amount refunded through Quickpay
+     * 
+     * @return integer amount in cents
+     */
+    public function getAmountRefunded()
+    {
+        return $this->amountRefunded;
+    }
+    
+    /**
      * Get the signature of the temporary basket
      * 
      * @return string signature of the basket
@@ -335,5 +356,15 @@ class QuickPayPayment extends ModelEntity
     public function addCapturedAmount($amount)
     {
         $this->amountCaptured += $amount;
+    }
+    
+    /**
+     * Add value to the amount of refunded payments
+     * 
+     * @param integer $amount the refunded amount
+     */
+    public function addRefundedAmount($amount)
+    {
+        $this->amountRefunded += $amount;
     }
 }

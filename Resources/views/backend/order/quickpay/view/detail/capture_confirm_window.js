@@ -31,10 +31,12 @@ Ext.define('Shopware.apps.Order.QuickPay.view.detail.CaptureConfirmWindow',
         
         var props = me.callParent(arguments);
         
+        var amount = Math.min(me.record.get('invoiceAmount') * 100, me.data.amountAuthorized);
+        
         props.message = me.snippets.text;
         props.amountLabel = me.snippets.amountlabel;
         props.maxAmount = me.data.amountAuthorized - me.data.amountCaptured;
-        props.amount = props.maxAmount;
+        props.amount = amount - me.data.amountCaptured;
         
         return props;
     }

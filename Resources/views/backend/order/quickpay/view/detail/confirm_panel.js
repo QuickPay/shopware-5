@@ -99,9 +99,10 @@ Ext.define('Shopware.apps.Order.QuickPay.view.detail.ConfirmPanel',
             items.push({
                 xtype: 'numberfield',
                 name: 'amount',
+                minValue: 0.01,
+                maxValue: me.maxAmount,
                 fieldLabel: me.amountLabel,
-                value: me.amount / 100.0,
-                readOnly: true
+                value: me.amount / 100.0
             });
         }
         else
