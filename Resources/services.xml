@@ -6,5 +6,11 @@
         <service id="quickpay_payment.quickpay_service"
                  class="QuickPayPayment\Components\QuickPayService">
         </service>
+        <service id="quickpay_payment.subscriber.backend"
+                 class="QuickPayPayment\Subscriber\Backend">
+            <argument type="service" id="service_container" />
+            <argument>%quick_pay_payment.plugin_dir%</argument>
+            <tag name="shopware.event_subscriber"/>
+        </service>
     </services>
 </container>

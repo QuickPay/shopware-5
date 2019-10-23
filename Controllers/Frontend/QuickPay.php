@@ -145,6 +145,9 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                         $this->checkAndPersistOrder($payment);
                             
                         $this->service->registerCallback($payment, $data);
+                        
+                        $this->updateOrderStatus($payment);
+                        
                         $responseCode = 200;
                         
                     }
@@ -301,6 +304,41 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
         else if($removeTemporaryOrder)
         {
             Shopware()->Modules()->Order()->sDeleteTemporaryOrder();
+            
+            Shopware()->Db()->executeUpdate(
+                'DELETE FROM s_order_basket WHERE sessionID=?',
+                [$this->session->offsetGet('sessionId')]
+            );
+            
+            if ($this->session->offsetExists('sOrderVariables')) {
+                $variables = $this->session->offsetGet('sOrderVariables');
+                $variables['sOrderNumber'] = $payment->getOrderNumber();
+                $this->session->offsetSet('sOrderVariables', $variables);
+            }
+        }
+    }
+    
+    /**
+     * Check the payment status and update the order accordingly
+     * 
+     * @param QuickPayPayment $payment
+     */
+    private function updateOrderStatus($payment)
+    {
+        switch($payment->getStatus())
+        {
+            case QuickPayPayment::PAYMENT_FULLY_AUTHORIZED:
+                $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_RESERVED);
+                break;
+            case QuickPayPayment::PAYMENT_FULLY_CAPTURED:
+                $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_COMPLETELY_PAID);
+                break;
+            case QuickPayPayment::PAYMENT_CANCELLED:
+                $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
+                break;
+            case QuickPayPayment::PAYMENT_REFUNDED:
+                $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_THE_PROCESS_HAS_BEEN_CANCELLED);
+                break;
         }
     }
     

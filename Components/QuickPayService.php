@@ -46,6 +46,14 @@ class QuickPayService
         Shopware()->Models()->persist($payment);
         Shopware()->Models()->flush($payment);
         
+        $this->handleNewOperation($payment, (object) array(
+            'type' => 'create',
+            'id' => null,
+            'amount' => 0,
+            'created_at' => date(),
+            'payload' => $paymentData
+        ));
+        
         return $payment;
     }
 
@@ -144,25 +152,48 @@ class QuickPayService
                 
                 if($payment->getAmount() <= $payment->getAmountAuthorized())
                 {
-                    if($payment->getStatus() == QuickPayPayment::PAYMENT_CREATED
-                        || $payment->getStatus() == QuickPayPayment::PAYMENT_ACCEPTED)
-                    {
-                        $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_AUTHORIZED);
-                    }
+                    $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_AUTHORIZED);
                 }
                 
                 break;
             
+            case 'capture_request':
+                $payment->setStatus(QuickPayPayment::PAYMENT_CAPTURE_REQUESTED);
+                
+                break;
+                
             case 'capture':
                 $payment->addCapturedAmount($operation->getAmount());
 
                 if($payment->getAmount() <= $payment->getAmountCaptured())
                 {
-                    if($payment->getStatus() == QuickPayPayment::PAYMENT_FULLY_AUTHORIZED)
-                    {
-                        $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_CAPTURED);
-                    }
+                    $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_CAPTURED);
                 }
+                else
+                {
+                    $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_AUTHORIZED);
+                }
+
+                break;
+            
+            case 'cancel_request':
+                $payment->setStatus(QuickPayPayment::PAYMENT_CANCEL_REQUSTED);
+                
+                break;
+                
+            case 'cancel':
+                $payment->setStatus(QuickPayPayment::PAYMENT_CANCELLED);
+
+                break;
+            
+            case 'refund_request':
+                $payment->setStatus(QuickPayPayment::PAYMENT_REFUND_REQUSTED);
+                
+                break;
+                
+            case 'refund':
+
+                $payment->setStatus(QuickPayPayment::PAYMENT_REFUNDED);
 
                 break;
             
@@ -194,7 +225,6 @@ class QuickPayService
             'type' => 'checksum_failure',
             'id' => null,
             'amount' => 0,
-            'created_at' => date(),
             'payload' => $data
         ));
     }
@@ -211,7 +241,6 @@ class QuickPayService
             'type' => 'test_mode_violation',
             'id' => null,
             'amount' => 0,
-            'created_at' => date(),
             'payload' => $data
         ));
     }
@@ -244,26 +273,139 @@ class QuickPayService
     }
 
     /**
+     * send a capture request to the QuickPay API
+     * 
+     * @param QuickPayPayment $payment
+     * @param integer $amount
+     */
+    public function requestCapture($payment, $amount)
+    {
+        if($payment->getStatus() != QuickPayPayment::PAYMENT_FULLY_AUTHORIZED)
+        {
+            throw new Exception('Invalid payment state');
+        }
+        
+        if($amount <= 0 || $amount > $payment->getAmountAuthorized() - $payment->getAmountCaptured())
+        {
+            throw new Exception('Invalid amount');
+        }
+        
+        $resource = sprintf('/payments/%s/capture', $payment->getId());
+        $paymentData = $this->request(self::METHOD_POST, $resource, [
+                'amount' => $amount
+            ], 
+            [
+                'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
+                    'controller' => 'QuickPay',
+                    'action' => 'callback',
+                    'forceSecure' => true,
+                    'module' => 'frontend'
+                ])
+            ]);
+        
+        $this->handleNewOperation($payment, (object) array(
+            'type' => 'capture_request',
+            'id' => null,
+            'amount' => $amount
+        ));
+    }
+
+    /**
+     * send a capture request to the QuickPay API
+     * 
+     * @param QuickPayPayment $payment
+     */
+    public function requestCancel($payment)
+    {
+        if($payment->getStatus() != QuickPayPayment::PAYMENT_FULLY_AUTHORIZED
+            && $payment->getStatus() != QuickPayPayment::PAYMENT_CREATED
+            && $payment->getStatus() != QuickPayPayment::PAYMENT_ACCEPTED)
+        {
+            throw new Exception('Invalid payment state');
+        }
+        
+        if($payment->getAmountCaptured() > 0)
+        {
+            throw new Exception('Payment already (partly) captured');
+        }
+        
+        $resource = sprintf('/payments/%s/cancel', $payment->getId());
+        $paymentData = $this->request(self::METHOD_POST, $resource, [], 
+            [
+                'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
+                    'controller' => 'QuickPay',
+                    'action' => 'callback',
+                    'forceSecure' => true,
+                    'module' => 'frontend'
+                ])
+            ]);
+        
+        $this->handleNewOperation($payment, (object) array(
+            'type' => 'cancel_request',
+            'id' => null,
+            'amount' => 0
+        ));
+    }
+
+    /**
+     * send a capture request to the QuickPay API
+     * 
+     * @param QuickPayPayment $payment
+     * @param integer $amount
+     */
+    public function requestRefund($payment, $amount)
+    {
+        if($payment->getStatus() != QuickPayPayment::PAYMENT_FULLY_CAPTURED)
+        {
+            throw new Exception('Invalid payment state');
+        }
+        
+        if($amount <= 0 || $amount != $payment->getAmountCaptured())
+        {
+            throw new Exception('Invalid amount');
+        }
+        
+        $resource = sprintf('/payments/%s/refund', $payment->getId());
+        $paymentData = $this->request(self::METHOD_POST, $resource, [
+                'amount' => $amount
+            ], 
+            [
+                'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
+                    'controller' => 'QuickPay',
+                    'action' => 'callback',
+                    'forceSecure' => true,
+                    'module' => 'frontend'
+                ])
+            ]);
+        
+        $this->handleNewOperation($payment, (object) array(
+            'type' => 'refund_request',
+            'id' => null,
+            'amount' => $amount
+        ));
+    }
+    
+    /**
      * Perform API request
      *
      * @param string $method
      * @param $resource
      * @param array $params
-     * @param bool $synchronized
+     * @param bool $headers
      */
-    private function request($method = self::METHOD_POST, $resource, $params = [], $synchronized = false)
+    private function request($method = self::METHOD_POST, $resource, $params = [], $headers = [])
     {
         $ch = curl_init();
 
         $url = $this->baseUrl . $resource;
-
+        
         //Set CURL options
         $options = [
             CURLOPT_URL            => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_HTTPAUTH       => CURLAUTH_BASIC,
-            CURLOPT_HTTPHEADER     => $this->getHeaders(),
+            CURLOPT_HTTPHEADER     => $this->getHeaders($headers),
             CURLOPT_CUSTOMREQUEST  => $method,
             CURLOPT_POSTFIELDS     => http_build_query($params, '', '&'),
         ];
@@ -294,15 +436,23 @@ class QuickPayService
     /**
      * Get CURL headers
      *
+     * @param array $headers list of additional headers
      * @return array
      */
-    private function getHeaders()
+    private function getHeaders($headers)
     {
-        return [
+        $result = [
             'Authorization: Basic ' . base64_encode(':' . $this->getApiKey()),
             'Accept-Version: v10',
             'Accept: application/json'
         ];
+        
+        foreach ($headers as $key => $value)
+        {
+            $result[] = $key. ': '. $value;
+        }
+        
+        return $result;
     }
 
     /**

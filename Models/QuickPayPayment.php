@@ -67,8 +67,13 @@ class QuickPayPayment extends ModelEntity
     
     const PAYMENT_CREATED = 0;
     const PAYMENT_ACCEPTED = 1;
-    const PAYMENT_FULLY_AUTHORIZED = 2;
-    const PAYMENT_FULLY_CAPTURED = 3;
+    const PAYMENT_FULLY_AUTHORIZED = 5;
+    const PAYMENT_CAPTURE_REQUESTED = 10;
+    const PAYMENT_FULLY_CAPTURED = 15;
+    const PAYMENT_CANCEL_REQUSTED = 20;
+    const PAYMENT_CANCELLED = 25;
+    const PAYMENT_REFUND_REQUSTED = 30;
+    const PAYMENT_REFUNDED = 35;
     
     /**
      * @ORM\Column(name="order_number", nullable=true)

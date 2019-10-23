@@ -20,6 +20,7 @@ class QuickPayPaymentOperation extends ModelEntity
     public function __construct($payment, $data)
     {
         $this->payment = $payment;
+        $this->createdAt = new DateTime();
         $this->update($data);
     }
     
@@ -69,11 +70,21 @@ class QuickPayPaymentOperation extends ModelEntity
     protected $amount;
     
     /**
-     * @ORM\Column(type="string", name="raw_json")
+     * @ORM\Column(type="string", name="raw_json", length=5000)
      * 
      * @var string Raw JSON of the message
      */
     protected $rawJson;
+    
+    /**
+     * Get the internal id of the payment operation
+     * 
+     * @return int
+     */
+    public function getId()
+    {
+        return $this->id;
+    }
     
     /**
      * Get the linked payment
@@ -142,8 +153,12 @@ class QuickPayPaymentOperation extends ModelEntity
     {
         $this->operationId = $data->id;
         $this->type = $data->type;
-        $this->amount = $data->amount;
-        $this->createdAt = new DateTime($data->created_at);
+        $this->amount = empty($data->amount) ? 0 :$data->amount;
+        if($data->created_at)
+        {
+            $this->createdAt = DateTime::createFromFormat(DateTime::ATOM, $data->created_at);
+            $this->createdAt->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+        }
         $this->rawJson = json_encode($data);
     }
 }

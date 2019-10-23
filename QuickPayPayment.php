@@ -43,7 +43,7 @@ class QuickPayPayment extends Plugin
         
         $this->createAttributes();
         
-        $context->scheduleClearCache(PluginContext\InstallContext::CACHE_LIST_ALL);
+        $context->scheduleClearCache(InstallContext::CACHE_LIST_ALL);
     }
 
     /**
@@ -88,7 +88,7 @@ class QuickPayPayment extends Plugin
 
         }
 
-        $context->scheduleClearCache(PluginContext\InstallContext::CACHE_LIST_ALL);
+        $context->scheduleClearCache(InstallContext::CACHE_LIST_ALL);
         
     }
     
