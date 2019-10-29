@@ -1,13 +1,18 @@
 <?php
 namespace QuickPayPayment;
 
+use Doctrine\ORM\Tools\SchemaTool;
+use Shopware\Components\Model\ModelManager;
 use Shopware\Components\Plugin;
-use Shopware\Components\Plugin\Context\InstallContext;
-use Shopware\Components\Plugin\Context\UninstallContext;
 use Shopware\Components\Plugin\Context\ActivateContext;
 use Shopware\Components\Plugin\Context\DeactivateContext;
+use Shopware\Components\Plugin\Context\InstallContext;
+use Shopware\Components\Plugin\Context\UninstallContext;
 use Shopware\Components\Plugin\Context\UpdateContext;
 use Shopware\Models\Payment\Payment;
+use QuickPayPayment\Models\QuickPayPayment as PaymentModel;
+use QuickPayPayment\Models\QuickPayPaymentOperation as PaymentOperationModel;
+use Shopware\Models\Order\Status as OrderStatus;
 
 class QuickPayPayment extends Plugin
 {
@@ -34,8 +39,12 @@ class QuickPayPayment extends Plugin
         ];
 
         $installer->createOrUpdate($context->getPlugin(), $options);
-
+        
+        $this->createTables();
+        
         $this->createAttributes();
+        
+        $context->scheduleClearCache(InstallContext::CACHE_LIST_ALL);
     }
 
     /**
@@ -45,7 +54,48 @@ class QuickPayPayment extends Plugin
      */
     public function update(UpdateContext $context)
     {
-        $this->createAttributes();
+        $currentVersion = $context->getCurrentVersion();
+        
+        if(version_compare($currentVersion, '2.0.0', '<'))
+        {
+            
+            
+            if(version_compare($currentVersion, '1.1.0', '>='))
+            {
+                $crud = $this->container->get('shopware_attribute.crud_service');
+                try {
+                    $crud->delete('s_order_attributes', 'quickpay_payment_link');
+                } catch (\Exception $e) {
+                }
+                Shopware()->Models()->generateAttributeModels(
+                    array('s_order_attributes')
+                ); 
+            }
+            
+            if(version_compare($currentVersion, '1.2.0', '>='))
+            {
+                /** @var ModelManager $entityManager */
+                $entityManager = $this->container->get('models');
+
+                $tool = new SchemaTool($entityManager);
+
+                $classMetaData = [
+                    $entityManager->getClassMetadata(PaymentModel::class)
+                ];
+
+                $tool->dropSchema($classMetaData);
+            }
+            
+            $this->createTables();
+            
+            if(version_compare($currentVersion, '1.1.0', '>='))
+            {
+                $this->createPaymentsRetroactively();
+            }
+
+        }
+
+        $context->scheduleClearCache(InstallContext::CACHE_LIST_ALL);
         
     }
     
@@ -58,7 +108,12 @@ class QuickPayPayment extends Plugin
     {
         $this->setActiveFlag($context->getPlugin()->getPayments(), false);
         
-        $this->removeAttributes();
+        if(!$context->keepUserData())
+        {
+            $this->removeAttributes();
+
+            $this->removeTables();
+        }
     }
 
     /**
@@ -101,16 +156,6 @@ class QuickPayPayment extends Plugin
      */
     private function createAttributes()
     {
-                
-        $crud = $this->container->get('shopware_attribute.crud_service');
-        $crud->update('s_order_attributes', 'quickpay_payment_link', 'string', array(
-            'displayInBackend' => true,
-            'label' => 'QuickPay payment link'
-        ), null, false, 'NULL');
-        
-        Shopware()->Models()->generateAttributeModels(
-            array('s_order_attributes')
-        );
         
     }
     
@@ -119,13 +164,61 @@ class QuickPayPayment extends Plugin
      */
     private function removeAttributes()
     {
-        $crud = $this->container->get('shopware_attribute.crud_service');
-        try {
-            $crud->delete('s_order_attributes', 'quickpay_payment_link');
-        } catch (\Exception $e) {
-        }
-        Shopware()->Models()->generateAttributeModels(
-            array('s_order_attributes')
-        );        
+        
     }
+    
+    /**
+     * Create all tables
+     */
+    private function createTables()
+    {
+        /** @var ModelManager $entityManager */
+        $entityManager = $this->container->get('models');
+        
+        $tool = new SchemaTool($entityManager);
+        
+        $classMetaData = [
+            $entityManager->getClassMetadata(PaymentModel::class),
+            $entityManager->getClassMetadata(PaymentOperationModel::class)
+        ];
+        
+        $tool->updateSchema($classMetaData, true);
+    }
+    
+    /**
+     * Remove all tables
+     */
+    private function removeTables()
+    {
+        /** @var ModelManager $entityManager */
+        $entityManager = $this->container->get('models');
+        
+        $tool = new SchemaTool($entityManager);
+        
+        $classMetaData = [
+            $entityManager->getClassMetadata(PaymentModel::class),
+            $entityManager->getClassMetadata(PaymentOperationModel::class)
+        ];
+        
+        $tool->dropSchema($classMetaData);
+    }
+
+    private function createPaymentsRetroactively()
+    {
+        $entity = Shopware()->Models()->getRepository(\Shopware\Models\Order\Order::class);
+        $builder = $entity->createQueryBuilder('orders')
+                ->where('orders.cleared = '. OrderStatus::PAYMENT_STATE_OPEN)
+                ->orWhere('orders.cleared = '. OrderStatus::PAYMENT_STATE_RESERVED);
+        
+        $orders = $builder->getQuery()->execute();
+        
+        $service = new Components\QuickPayService();
+        
+        foreach ($orders as $order)
+        {
+            $service->createPaymentRetroactively($order);
+        }
+        
+    }
+    
 }
