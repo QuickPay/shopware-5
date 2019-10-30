@@ -3,7 +3,7 @@ Ext.define('Shopware.apps.Order.QuickPay.controller.Detail',
 {
     override: 'Shopware.apps.Order.controller.Detail',
     
-    snippets: {
+    quickpaySnippets: {
         notifications: {
             captureSuccess: {
                 title: '{s name=detail/notifications/request_success/title}Request submitted{/s}',
@@ -149,14 +149,14 @@ Ext.define('Shopware.apps.Order.QuickPay.controller.Detail',
                 var data = Ext.JSON.decode(response.responseText);
                 
                 if (!data.success) {
-                    var notification = me.snippets.notifications.captureFailure;
-                    Shopware.Notification.createGrowlMessage(notification.title, data.message, me.snippets.notifications.growlMessage);
+                    var notification = me.quickpaySnippets.notifications.captureFailure;
+                    Shopware.Notification.createGrowlMessage(notification.title, data.message, me.quickpaySnippets.notifications.growlMessage);
                     
                     return;
                 }
                 
-                var notification = me.snippets.notifications.captureSuccess;
-                Shopware.Notification.createGrowlMessage(notification.title, notification.message, me.snippets.notifications.growlMessage);
+                var notification = me.quickpaySnippets.notifications.captureSuccess;
+                Shopware.Notification.createGrowlMessage(notification.title, notification.message, me.quickpaySnippets.notifications.growlMessage);
                 
                 source.operationFinished('capture', false);
                 
@@ -192,14 +192,14 @@ Ext.define('Shopware.apps.Order.QuickPay.controller.Detail',
                 var data = Ext.JSON.decode(response.responseText);
                 
                 if (!data.success) {
-                    var notification = me.snippets.notifications.cancelFailure;
-                    Shopware.Notification.createGrowlMessage(notification.title, data.message, me.snippets.notifications.growlMessage);
+                    var notification = me.quickpaySnippets.notifications.cancelFailure;
+                    Shopware.Notification.createGrowlMessage(notification.title, data.message, me.quickpaySnippets.notifications.growlMessage);
                     
                     return;
                 }
                 
-                var notification = me.snippets.notifications.cancelSuccess;
-                Shopware.Notification.createGrowlMessage(notification.title, notification.message, me.snippets.notifications.growlMessage);
+                var notification = me.quickpaySnippets.notifications.cancelSuccess;
+                Shopware.Notification.createGrowlMessage(notification.title, notification.message, me.quickpaySnippets.notifications.growlMessage);
                 
                 source.operationFinished('cancel', false);
                 
@@ -235,14 +235,14 @@ Ext.define('Shopware.apps.Order.QuickPay.controller.Detail',
                 var data = Ext.JSON.decode(response.responseText);
                 
                 if (!data.success) {
-                    var notification = me.snippets.notifications.refundFailure;
-                    Shopware.Notification.createGrowlMessage(notification.title, data.message, me.snippets.notifications.growlMessage);
+                    var notification = me.quickpaySnippets.notifications.refundFailure;
+                    Shopware.Notification.createGrowlMessage(notification.title, data.message, me.quickpaySnippets.notifications.growlMessage);
                     
                     return;
                 }
                 
-                var notification = me.snippets.notifications.refundSuccess;
-                Shopware.Notification.createGrowlMessage(notification.title, notification.message, me.snippets.notifications.growlMessage);
+                var notification = me.quickpaySnippets.notifications.refundSuccess;
+                Shopware.Notification.createGrowlMessage(notification.title, notification.message, me.quickpaySnippets.notifications.growlMessage);
                 
                 source.operationFinished('refund', false);
                 

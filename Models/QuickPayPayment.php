@@ -225,7 +225,7 @@ class QuickPayPayment extends ModelEntity
         }
         
         $rep = Shopware()->Models()->getRepository(Order::class);
-        return $rep->findOneBy(['ordernumber' => $this->orderNumber]);
+        return $rep->findOneBy(['number' => $this->orderNumber]);
     }
     
     /**

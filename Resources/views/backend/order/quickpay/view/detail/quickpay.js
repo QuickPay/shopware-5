@@ -18,7 +18,6 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
         refundButtonText: '{s name=order/refund_button/text}Refund{/s}',
         reloadButtonText: '{s name=order/reload_button/text}Reload{/s}',
         gridTitle: '{s name=order/grid/title}Payment History{/s}',
-        paymentLink: '{s name=order/payment_link/label}Payment Link:{/s}',
     },
 
     initComponent: function() {
@@ -32,7 +31,6 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
 
         me.items = [
             me.createToolbar(),
-            me.createFields(),
             me.createGrid()
         ];
         
@@ -174,17 +172,6 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
         me.fireEvent('reload', me.record.get('quickpay_payment_id'));
     },
 
-    createFields: function()
-    {
-        var me = this;
-        me.linkField = Ext.create('Ext.form.field.Text', {            
-            fieldLabel: me.snippets.paymentLink,
-            readOnly: true
-        });
-        
-        return me.linkField;
-    },
-
     createGrid: function()
     {
         var me = this;
@@ -218,7 +205,6 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
         {
             me.setDisabled(false);
             me.updateToolbar(payment);
-            me.updateFields(payment);
             me.updateGrid(payment);
         }
     },
@@ -232,13 +218,6 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
         me.captureButton.setDisabled(status !== 5 && status !== 12); //Only FULLY_AUTHORIZED or PARTLY_CAPTURED
         me.cancelButton.setDisabled(status >= 10); //No capture requested yet
         me.refundButton.setDisabled(status !== 12 && status !== 15 && status !== 32); //Only PARTLY_CAPTURED, FULLY_CAPTURED and PARTLY_REFUNDED
-    },
-    
-    updateFields: function(payment)
-    {
-        var me = this;
-        
-        me.linkField.setValue(payment.get('link'));
     },
 
     updateGrid: function(payment)

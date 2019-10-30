@@ -3,15 +3,28 @@
     <label lang="de">QuickPay Payment</label>
     <label lang="en">QuickPay Payment</label>
 
-    <version>1.0.2</version>
+    <version>2.0.0</version>
     <link>https://quickpay.net</link>
     <author>QuickPay ApS</author>
-    <compatibility minVersion="5.2.0" />
+    <compatibility minVersion="5.3.0" />
+    <changelog version="2.0.0">
+        <changes lang="en">
+            Added Backend panel to the order detail view
+            Included possibility to trigger capture, cancel and refund requests from the backend
+            Updated internal checkout workflow
+        </changes>
+    </changelog>
+    <changelog version="1.1.0">
+        <changes lang="en">
+            Added fix to prevent template error
+            Added payment link to order attributes
+            Allow cancelling of payment without losing cart, only send out order confirmation on successful payment
+        </changes>
+    </changelog>
     <changelog version="1.0.1">
         <changes lang="en">Send shop language when creating payment link</changes>
     </changelog>
     <changelog version="1.0.0">
-        <changes lang="de">Veröffentlichung</changes>
         <changes lang="en">Release</changes>
     </changelog>
 </plugin>

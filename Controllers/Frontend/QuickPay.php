@@ -43,10 +43,16 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             
             $amount = $this->getAmount() * 100; //Convert to cents
             
+            $variables = array(
+                'device' => $this->Request()->getDeviceType(),
+                'comment' => $this->session->offsetGet('sComment'),
+                'dispatchId' => $this->session->offsetGet('sDispatch')
+            );
+            
             if(empty($paymentId))
             {   
                 //Create new payment
-                $payment = $this->service->createPayment($this->session->offsetGet('sUserId'), $this->getBasket(), $amount, $this->getCurrencyShortName());
+                $payment = $this->service->createPayment($this->session->offsetGet('sUserId'), $this->getBasket(), $amount, $variables, $this->getCurrencyShortName());
             }
             else
             {
@@ -57,12 +63,12 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 if($payment->getStatus() == QuickPayPayment::PAYMENT_CREATED)
                 {
                     //Update existing QuickPay payment
-                    $payment = $this->service->updatePayment($paymentId, $this->getBasket(), $amount);
+                    $payment = $this->service->updatePayment($paymentId, $this->getBasket(), $amount, $variables);
                 }
                 else
                 {
                     //Create new payment
-                    $payment = $this->service->createPayment($this->session->offsetGet('sUserId'), $this->getBasket(), $amount, $this->getCurrencyShortName());
+                    $payment = $this->service->createPayment($this->session->offsetGet('sUserId'), $this->getBasket(), $amount, $variables, $this->getCurrencyShortName());
                 }
             }
             
@@ -140,6 +146,12 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                     //Check if the test mode info matches the configured value
                     if ($this->checkTestMode($data))
                     {
+                        
+                        if(isset($data->variables))
+                        {
+                            $this->session->offsetSet('sDispatch', $data->variables->dispatchId);
+                            $this->session->offsetSet('sComment', $data->variables->comment);
+                        }
                         
                         //Make sure the order is persisted
                         $this->checkAndPersistOrder($payment);

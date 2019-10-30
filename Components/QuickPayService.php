@@ -26,13 +26,14 @@ class QuickPayService
      * @param integer $amount Amount to pay in cents
      * @return \QuickPayPayment\Models\QuickPayPayment
      */
-    public function createPayment($userId, $basket, $amount, $currency)
+    public function createPayment($userId, $basket, $amount, $variables, $currency)
     {
         $orderId = $this->createOrderId();
         
         $parameters = [
             'currency' => $currency,
-            'order_id' => $orderId
+            'order_id' => $orderId,
+            'variables' => $variables
         ];
         
         //Create payment
@@ -58,16 +59,61 @@ class QuickPayService
     }
 
     /**
-     * Create payment
+     * Get payment data for orders created with a previous version of the plugin
+     * 
+     * @param Shopware\Models\Order\Order $order
+     */
+    public function createPaymentRetroactively($order)
+    {
+        try {
+            $paymentId = $order->getTemporaryId();
+            
+            $parameters = [];
+
+            $resource = sprintf('/payments/%s', $paymentId);
+
+            //Get payment
+            $paymentData = $this->request(self::METHOD_GET, $resource, $parameters);
+            
+            $payment = new QuickPayPayment($paymentData->id, $paymentData->order_id, $order->getCustomer(), $paymentData->link->amount);
+            
+            $payment->setLink($paymentData->link->url);
+            $payment->setOrderNumber($order->getNumber());
+            
+            Shopware()->Models()->persist($payment);
+            Shopware()->Models()->flush($payment);
+
+            $this->handleNewOperation($payment, (object) array(
+                'type' => 'create',
+                'id' => null,
+                'amount' => 0,
+                'created_at' => $paymentData->created_at,
+                'payload' => $paymentData
+            ));
+            
+            $this->registerCallback($payment, $paymentData);
+            
+            return $payment;
+        }
+        catch(Exception $e)
+        {
+            return null;
+        }
+    }
+    
+    /**
+     * Update payment
      *
      * @param string $paymentId Id of the QuickPayPayment
      * @param mixed $basket The current basket
      * @param integer $amount Amount to pay in cents
      * @return \QuickPayPayment\Models\QuickPayPayment
      */
-    public function updatePayment($paymentId, $basket, $amount)
+    public function updatePayment($paymentId, $basket, $amount, $variables)
     {
-        $parameters = [];
+        $parameters = [
+            'variables' => $variables
+        ];
         
         $resource = sprintf('/payments/%s', $paymentId);
         

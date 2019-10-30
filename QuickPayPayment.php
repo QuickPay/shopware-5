@@ -12,6 +12,7 @@ use Shopware\Components\Plugin\Context\UpdateContext;
 use Shopware\Models\Payment\Payment;
 use QuickPayPayment\Models\QuickPayPayment as PaymentModel;
 use QuickPayPayment\Models\QuickPayPaymentOperation as PaymentOperationModel;
+use Shopware\Models\Order\Status as OrderStatus;
 
 class QuickPayPayment extends Plugin
 {
@@ -58,7 +59,8 @@ class QuickPayPayment extends Plugin
         if(version_compare($currentVersion, '2.0.0', '<'))
         {
             
-            if(version_compare($currentVersion, '1.1.0'. '>='))
+            
+            if(version_compare($currentVersion, '1.1.0', '>='))
             {
                 $crud = $this->container->get('shopware_attribute.crud_service');
                 try {
@@ -69,8 +71,8 @@ class QuickPayPayment extends Plugin
                     array('s_order_attributes')
                 ); 
             }
-
-            if(version_compare($currentVersion, '1.2.0'. '>='))
+            
+            if(version_compare($currentVersion, '1.2.0', '>='))
             {
                 /** @var ModelManager $entityManager */
                 $entityManager = $this->container->get('models');
@@ -85,6 +87,11 @@ class QuickPayPayment extends Plugin
             }
             
             $this->createTables();
+            
+            if(version_compare($currentVersion, '1.1.0', '>='))
+            {
+                $this->createPaymentsRetroactively();
+            }
 
         }
 
@@ -196,4 +203,22 @@ class QuickPayPayment extends Plugin
         $tool->dropSchema($classMetaData);
     }
 
+    private function createPaymentsRetroactively()
+    {
+        $entity = Shopware()->Models()->getRepository(\Shopware\Models\Order\Order::class);
+        $builder = $entity->createQueryBuilder('orders')
+                ->where('orders.cleared = '. OrderStatus::PAYMENT_STATE_OPEN)
+                ->orWhere('orders.cleared = '. OrderStatus::PAYMENT_STATE_RESERVED);
+        
+        $orders = $builder->getQuery()->execute();
+        
+        $service = new Components\QuickPayService();
+        
+        foreach ($orders as $order)
+        {
+            $service->createPaymentRetroactively($order);
+        }
+        
+    }
+    
 }
