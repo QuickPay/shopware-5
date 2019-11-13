@@ -24,6 +24,7 @@ The QuickPay Payment plugin has the following settings:
 |  Public Key | The API key for the QuickPay integration |
 |  Private Key | The private key for the QuickPay integration  |
 |  Test mode |  Configure wether the test mode is enabled. With test mode enabled payments using the QuickPay [test data](https://learn.quickpay.net/tech-talk/appendixes/test/ "test data") are possible.  |
+
 The public and private key can be found in the QuickPay management panel under Settings->Integration
 
 In order to use the QuickPay payment method the it has to be activated using the Payment methods window in the Shopware backend. Enabling it for different shipping methods might also be necessary
@@ -48,5 +49,6 @@ In addition abore this list the following four buttons are present:
 |  Cancel | Cancel a payment that has not been captured yet |
 |  Refund | Refund a payment that has already been captured |
 |  Reload | Refresh the history and the status of the payment  |
+
 Each button is enabled or disabled according to the current status of the QuickPay payment.
 Clicking either of the first three buttons will open a window to confirm this operation. When capturing or refunding partial the amount can be entered to make partial captures/refunds a possibility.
