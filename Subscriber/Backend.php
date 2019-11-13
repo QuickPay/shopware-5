@@ -120,7 +120,7 @@ class Backend implements SubscriberInterface
                     {
                         case 'capture':
 
-                            $amount = $data['invoiceAmount'] - $payment->getAmountCaptured();
+                            $amount = $data['invoiceAmount'] * 100 - $payment->getAmountCaptured();
 
                             $service->requestCapture($payment, $amount);
                             break;
