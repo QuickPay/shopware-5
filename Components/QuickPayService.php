@@ -4,6 +4,7 @@ namespace QuickPayPayment\Components;
 
 use Exception;
 use QuickPayPayment\Models\QuickPayPayment;
+use QuickPayPayment\Models\QuickPayPaymentOperation;
 use Shopware\Components\Random;
 use Shopware\Models\Customer\Customer;
 use function Shopware;
@@ -102,6 +103,21 @@ class QuickPayService
     }
     
     /**
+     * Load the payment data through the QuickPay API and update the operaitons
+     * 
+     * @param QuickPayPayment $payment
+     */
+    public function loadPaymentOperations($payment)
+    {
+        $resource = sprintf('/payments/%s', $payment->getId());
+
+        //Get payment data
+        $paymentData = $this->request(self::METHOD_GET, $resource, []);
+        
+        $this->registerCallback($payment, $paymentData);
+    }
+    
+    /**
      * Update payment
      *
      * @param string $paymentId Id of the QuickPayPayment
@@ -158,7 +174,7 @@ class QuickPayService
         
         //Sort Operations by Id
         $operationsById = array();
-        /** @var \QuickPayPayment\Models\QuickPayPaymentOperation $operation */
+        /** @var QuickPayPaymentOperation $operation */
         foreach($operations as $operation)
         {
             if($operation->getOperationId() != null)
@@ -170,7 +186,7 @@ class QuickPayService
         {
             if(!isset($operationsById[$operation->id]))
             {
-                $operationsById[$operation->id] = $this->handleNewOperation($payment, $operation);
+                $operationsById[$operation->id] = $this->handleNewOperation($payment, $operation, false);
             }
             else{
                 $operationsById[$operation->id]->update($operation);
@@ -179,97 +195,180 @@ class QuickPayService
         
         //save changes made to the operations
         Shopware()->Models()->flush($operationsById);
+        
+        $this->updateStatus($payment);
     }
-     
+
     /**
-     * Create a Quickpay payment operation and update the payment accordingly
+     * Create a Quickpay payment operation
      * 
      * @param QuickPayPayment $payment
      * @param mixed $data
-     * @return \QuickPayPayment\Models\QuickPayPaymentOperation
+     * @param boolean $updateStatus
+     * @return QuickPayPaymentOperation
      */
-    public function handleNewOperation($payment, $data)
+    public function handleNewOperation($payment, $data, $updateStatus = true)
     {
-        $operation = new \QuickPayPayment\Models\QuickPayPaymentOperation($payment, $data);
-        switch ($operation->getType())
-        {
-            case 'authorize':
-                $payment->addAuthorizedAmount($operation->getAmount());
-                
-                if($payment->getAmount() <= $payment->getAmountAuthorized())
-                {
-                    $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_AUTHORIZED);
-                }
-                
-                break;
-            
-            case 'capture_request':
-                $payment->setStatus(QuickPayPayment::PAYMENT_CAPTURE_REQUESTED);
-                
-                break;
-                
-            case 'capture':
-                $payment->addCapturedAmount($operation->getAmount());
-
-                if($payment->getAmount() <= $payment->getAmountCaptured())
-                {
-                    $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_CAPTURED);
-                }
-                else
-                {
-                    $payment->setStatus(QuickPayPayment::PAYMENT_PARTLY_CAPTURED);
-                }
-
-                break;
-            
-            case 'cancel_request':
-                $payment->setStatus(QuickPayPayment::PAYMENT_CANCEL_REQUSTED);
-                
-                break;
-                
-            case 'cancel':
-                $payment->setStatus(QuickPayPayment::PAYMENT_CANCELLED);
-
-                break;
-            
-            case 'refund_request':
-                
-                $payment->setStatus(QuickPayPayment::PAYMENT_REFUND_REQUSTED);
-                
-                break;
-                
-            case 'refund':
-                $payment->addRefundedAmount($operation->getAmount());
-                if($payment->getAmountCaptured() <= $payment->getAmountRefunded())
-                {
-                    $payment->setStatus(QuickPayPayment::PAYMENT_FULLY_REFUNDED);
-                }
-                else
-                {
-                    $payment->setStatus(QuickPayPayment::PAYMENT_PARTLY_REFUNDED);
-                }
-
-                break;
-            
-            case 'checksum_failure':
-            case 'test_mode_violation':
-                $payment->setStatus(QuickPayPayment::PAYMENT_INVALIDATED);
-                break;
-                
-            default:
-                if($data->accepted && $payment->getStatus() == QuickPayPayment::PAYMENT_CREATED)
-                {
-                    $payment->setStatus(QuickPayPayment::PAYMENT_ACCEPTED);
-                }
-        }
-        
-        //Save updates to the payment object
-        Shopware()->Models()->flush($payment);
+        $operation = new QuickPayPaymentOperation($payment, $data);
         //Persist the new operation
         Shopware()->Models()->persist($operation);
         Shopware()->Models()->flush($operation);
         
+        if($updateStatus)
+        {
+            $this->updateStatus($payment);
+        }
+        
         return $operation;
+    }
+            
+    /**
+     * Update the status of the QuickPay payment according to the operations
+     * 
+     * @param QuickPayPayment $payment
+     */
+    public function updateStatus($payment)
+    {
+        $amount = $payment->getAmount();
+        $amountAuthorized = 0;
+        $amountCaptured = 0;
+        $amountRefunded = 0;
+        $status = QuickPayPayment::PAYMENT_CREATED;
+        
+        $repository = Shopware()->Models()->getRepository(QuickPayPaymentOperation::class);
+        $operations = $repository->findBy(['payment' => $payment], ['createdAt' => 'ASC', 'id' => 'ASC']);
+        
+        /** @var QuickPayPaymentOperation $operation */
+        foreach($operations as $operation)
+        {
+            
+            switch ($operation->getType())
+            {
+                case 'authorize':
+                    if($operation->isSuccessfull())
+                    {
+                        $amountAuthorized += $operation->getAmount();
+
+                        if($amount <= $amountAuthorized)
+                        {
+                            $status = QuickPayPayment::PAYMENT_FULLY_AUTHORIZED;
+                        }
+                    }
+                    else if($operation->isFinished())
+                    {
+                        $status = QuickPayPayment::PAYMENT_ACCEPTED;
+                    }
+                    break;
+
+                case 'capture_request':
+                    
+                    $status = QuickPayPayment::PAYMENT_CAPTURE_REQUESTED;
+
+                    break;
+
+                case 'capture':
+                    if($operation->isSuccessfull())
+                    {
+                        $amountCaptured += $operation->getAmount();
+
+                        if($amount <= $amountCaptured)
+                        {
+                            $status = QuickPayPayment::PAYMENT_FULLY_CAPTURED;
+                        }
+                        else
+                        {
+                            $status = QuickPayPayment::PAYMENT_PARTLY_CAPTURED;
+                        }
+                    }
+                    else if($operation->isFinished())
+                    {
+                        if($amountCaptured > 0)
+                        {
+                            $status = QuickPayPayment::PAYMENT_PARTLY_CAPTURED;
+                        }
+                        else
+                        {
+                            $status = QuickPayPayment::PAYMENT_FULLY_AUTHORIZED;
+                        }
+                    }
+                    break;
+
+                case 'cancel_request':
+                    $status = QuickPayPayment::PAYMENT_CANCEL_REQUSTED;
+
+                    break;
+
+                case 'cancel':
+                    if($operation->isSuccessfull())
+                    {
+                        $status = QuickPayPayment::PAYMENT_CANCELLED;
+                    }
+                    else if($operation->isFinished())
+                    {
+                        $status = QuickPayPayment::PAYMENT_FULLY_AUTHORIZED;
+                    }
+
+                    break;
+
+                case 'refund_request':
+
+                    $status = QuickPayPayment::PAYMENT_REFUND_REQUSTED;
+
+                    break;
+
+                case 'refund':
+                    if($operation->isSuccessfull())
+                    {
+                        $amountRefunded += $operation->getAmount();
+
+                        if($amountCaptured <= $$amountRefunded)
+                        {
+                            $status = QuickPayPayment::PAYMENT_FULLY_REFUNDED;
+                        }
+                        else
+                        {
+                            $status = QuickPayPayment::PAYMENT_PARTLY_REFUNDED;
+                        }
+                    }
+                    else
+                    {
+                        if($amountRefunded > 0)
+                        {
+                            $status = QuickPayPayment::PAYMENT_PARTLY_REFUNDED;
+                        }
+                        else
+                        {
+                            if($amountCaptured < $amount)
+                            {
+                                $status = QuickPayPayment::PAYMENT_PARTLY_CAPTURED;
+                            }
+                            else
+                            {
+                                $status = QuickPayPayment::PAYMENT_FULLY_CAPTURED;
+                            }
+                        }
+                    }
+
+                    break;
+
+                case 'checksum_failure':
+                case 'test_mode_violation':
+                    $status = QuickPayPayment::PAYMENT_INVALIDATED;
+                    break;
+
+                default:
+                    break;
+            }
+
+        }
+        
+        $payment->setAmountAuthorized($amountAuthorized);
+        $payment->setAmountCaptured($amountCaptured);
+        $payment->setAmountRefunded($amountRefunded);
+        $payment->setStatus($status);
+        
+        //Save updates to the payment object
+        Shopware()->Models()->flush($payment);
     }
     
     /**

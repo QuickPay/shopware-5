@@ -7,6 +7,7 @@ Ext.define('Shopware.apps.Order.QuickPay.model.Operation',
         { name: 'id', type: 'int' },
         { name: 'createdAt', type: 'date' },
         { name: 'type', type: 'string' },
+        { name: 'status', type: 'string' },
         { name: 'amount', type: 'int' }
     ],
     

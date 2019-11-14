@@ -43,7 +43,7 @@ class Shopware_Controllers_Backend_QuickPay extends Shopware_Controllers_Backend
         try {
             $db = Shopware()->Db();
 
-            return $db->fetchAll("SELECT id, created_at as createdAt, type, amount FROM quickpay_payment_operations WHERE payment_id = ? ORDER BY created_at DESC, id DESC", [$id], Zend_Db::FETCH_ASSOC);
+            return $db->fetchAll("SELECT id, created_at as createdAt, type, status, amount FROM quickpay_payment_operations WHERE payment_id = ? ORDER BY created_at DESC, id DESC", [$id], Zend_Db::FETCH_ASSOC);
 
         }
         catch(Exception $e)
