@@ -269,6 +269,16 @@ class QuickPayPayment extends ModelEntity
     }
     
     /**
+     * Set the amount authorized through QuickPay
+     * 
+     * @param integer $amount amount in cents
+     */
+    public function setAmountAuthorized($amount)
+    {
+        $this->amountAuthorized = $amount;
+    }
+    
+    /**
      * Get the amount captured through Quickpay
      * 
      * @return integer amount in cents
@@ -279,6 +289,16 @@ class QuickPayPayment extends ModelEntity
     }
     
     /**
+     * Set the amount captured through QuickPay
+     * 
+     * @param integer $amount amount in cents
+     */
+    public function setAmountCaptured($amount)
+    {
+        $this->amountCaptured = $amount;
+    }
+    
+    /**
      * Get the amount refunded through Quickpay
      * 
      * @return integer amount in cents
@@ -286,6 +306,16 @@ class QuickPayPayment extends ModelEntity
     public function getAmountRefunded()
     {
         return $this->amountRefunded;
+    }
+    
+    /**
+     * Set the amount refunded through QuickPay
+     * 
+     * @param integer $amount amount in cents
+     */
+    public function setAmountRefunded($amount)
+    {
+        $this->amountRefunded = $amount;
     }
     
     /**
@@ -337,34 +367,5 @@ class QuickPayPayment extends ModelEntity
     {
         $this->link = $link;
     }
-    
-    /**
-     * Add value to the amount of authorized payments
-     * 
-     * @param integer $amount the authorized amount
-     */
-    public function addAuthorizedAmount($amount)
-    {
-        $this->amountAuthorized += $amount;
-    }
-    
-    /**
-     * Add value to the amount of captured payments
-     * 
-     * @param integer $amount the captured amount
-     */
-    public function addCapturedAmount($amount)
-    {
-        $this->amountCaptured += $amount;
-    }
-    
-    /**
-     * Add value to the amount of refunded payments
-     * 
-     * @param integer $amount the refunded amount
-     */
-    public function addRefundedAmount($amount)
-    {
-        $this->amountRefunded += $amount;
-    }
+
 }

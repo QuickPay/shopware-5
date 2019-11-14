@@ -63,6 +63,23 @@ class QuickPayPaymentOperation extends ModelEntity
     protected $type;
 
     /**
+     * @ORM\Column(type="string", name="status", nullable=true)
+     * 
+     * @var string status of the operation
+     */
+    protected $status;    
+    
+    const PAYMENT_OPERATION_APPROVED = '20000';
+    const PAYMENT_OPERATION_WAITING_APPROVAL = '20200';
+    const PAYMENT_OPERATION_3D_SECURE_REQUIRED = '30100';
+    const PAYMENT_OPERATION_REJECTED_BY_ACQUIRER = '40000';
+    const PAYMENT_OPERATION_DATA_ERROR = '40001';
+    const PAYMENT_OPERATION_AUTHORIZATION_EXPIRED = '40002';
+    const PAYMENT_OPERATION_ABORTED = '40003';
+    const PAYMENT_OPERATION_GATEWAY_ERROR = '50000';
+    const PAYMENT_OPERATION_COMMUNICATIONS_ERROR = '50300';
+    
+    /**
      * @ORM\Column(name="amount", type="integer")
      *
      * @var integer the Amount for the operation
@@ -127,6 +144,40 @@ class QuickPayPaymentOperation extends ModelEntity
     }
     
     /**
+     * Get the status of the operation
+     * 
+     * @return string
+     */
+    public function getStatus()
+    {
+        return $this->status;
+    }
+    
+    /**
+     * Checks wether the operation was successfully
+     * 
+     * @return boolean
+     */
+    public function isSuccessfull()
+    {
+        return $this->status == self::PAYMENT_OPERATION_APPROVED;
+    }
+    
+    /**
+     * Checks wether the operation was finished
+     * 
+     * @return boolean
+     */
+    public function isFinished()
+    {
+        return array_search($this->status, [
+            self::PAYMENT_OPERATION_WAITING_APPROVAL,
+            self::PAYMENT_OPERATION_3D_SECURE_REQUIRED,
+            
+        ]) === false;
+    }
+    
+    /**
      * Get the amount fo the operation
      * 
      * @return integer
@@ -153,6 +204,7 @@ class QuickPayPaymentOperation extends ModelEntity
     {
         $this->operationId = $data->id;
         $this->type = $data->type;
+        $this->status = $data->qp_status_code;
         $this->amount = empty($data->amount) ? 0 :$data->amount;
         if($data->created_at)
         {
