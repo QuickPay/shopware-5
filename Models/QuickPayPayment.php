@@ -67,7 +67,6 @@ class QuickPayPayment extends ModelEntity
     protected $status;
     
     const PAYMENT_CREATED = 0;
-    const PAYMENT_ACCEPTED = 1;
     const PAYMENT_FULLY_AUTHORIZED = 5;
     const PAYMENT_CAPTURE_REQUESTED = 10;
     const PAYMENT_PARTLY_CAPTURED = 12;
