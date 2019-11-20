@@ -153,12 +153,16 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                             $this->session->offsetSet('sComment', $data->variables->comment);
                         }
                         
-                        //Make sure the order is persisted
-                        $this->checkAndPersistOrder($payment);
-                            
                         $this->service->registerCallback($payment, $data);
                         
-                        $this->updateOrderStatus($payment);
+                        //Check if the payment was at least authorized
+                        if($payment->getStatus() != QuickPayPayment::PAYMENT_CREATED)
+                        {
+                            //Make sure the order is persisted
+                            $this->checkAndPersistOrder($payment);
+                            
+                            $this->updateOrderStatus($payment);
+                        }
                         
                         $responseCode = 200;
                         
