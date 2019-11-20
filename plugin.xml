@@ -3,10 +3,15 @@
     <label lang="de">QuickPay Payment</label>
     <label lang="en">QuickPay Payment</label>
 
-    <version>2.0.1</version>
+    <version>2.0.2</version>
     <link>https://quickpay.net</link>
     <author>QuickPay ApS</author>
     <compatibility minVersion="5.3.0" />
+    <changelog version="2.0.2">
+        <changes lang="en">
+           Callback only persists order if payment-authorization was successful
+        </changes>
+    </changelog>
     <changelog version="2.0.1">
         <changes lang="en">
             Fixed callback to consider qp_status_code
