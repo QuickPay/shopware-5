@@ -254,10 +254,6 @@ class QuickPayService
                             $status = QuickPayPayment::PAYMENT_FULLY_AUTHORIZED;
                         }
                     }
-                    else if($operation->isFinished())
-                    {
-                        $status = QuickPayPayment::PAYMENT_ACCEPTED;
-                    }
                     break;
 
                 case 'capture_request':
