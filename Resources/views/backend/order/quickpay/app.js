@@ -1,6 +1,8 @@
 //{block name="backend/order/application" append}
     //{include file="backend/order/quickpay/controller/main.js"}
     //{include file="backend/order/quickpay/controller/detail.js"}
+    //{include file="backend/order/quickpay/controller/batch.js"}
+    //{include file="backend/order/quickpay/view/batch/form.js"}
     //{include file="backend/order/quickpay/view/detail/quickpay.js"}
     //{include file="backend/order/quickpay/view/detail/confirm_window.js"}
     //{include file="backend/order/quickpay/view/detail/capture_confirm_window.js"}
