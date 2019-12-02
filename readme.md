@@ -3,7 +3,7 @@ This plugin enables QuickPay as payment option for Shopware
 ## Installation ##
 The plugin can easily be installed by following the steps below:
 - Clone the repository into a folder named *QuickPayPayment* inside Shopwares *custom/plugins* directory.
-- Open the Plugin Manager in then Shopware backend
+- Open the Plugin Manager in the Shopware backend
 - Select **Installed** from the Menu on the side and look for the QuickPay Payment plugin in the list of uninstalled plugins
 - Install the plugin
 - Activate the plugin
