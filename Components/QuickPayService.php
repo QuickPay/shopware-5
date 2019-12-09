@@ -445,24 +445,36 @@ class QuickPayService
             throw new Exception('Invalid amount');
         }
         
-        $resource = sprintf('/payments/%s/capture', $payment->getId());
-        $paymentData = $this->request(self::METHOD_POST, $resource, [
-                'amount' => $amount
-            ], 
-            [
-                'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
-                    'controller' => 'QuickPay',
-                    'action' => 'callback',
-                    'forceSecure' => true,
-                    'module' => 'frontend'
-                ])
-            ]);
-        
-        $this->handleNewOperation($payment, (object) array(
+        $operation = $this->handleNewOperation($payment, (object) array(
             'type' => 'capture_request',
             'id' => null,
             'amount' => $amount
         ));
+        
+        try
+        {
+        
+            $resource = sprintf('/payments/%s/capture', $payment->getId());
+            $paymentData = $this->request(self::METHOD_POST, $resource, [
+                    'amount' => $amount
+                ], 
+                [
+                    'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
+                        'controller' => 'QuickPay',
+                        'action' => 'callback',
+                        'forceSecure' => true,
+                        'module' => 'frontend'
+                    ])
+                ]);
+        }
+        catch (Exception $e)
+        {
+            Shopware()->Models()->remove($operation);
+            Shopware()->Models()->flush($operation);
+            
+            throw $e;
+        }
+
     }
 
     /**
@@ -484,22 +496,32 @@ class QuickPayService
             throw new Exception('Payment already (partly) captured');
         }
         
-        $resource = sprintf('/payments/%s/cancel', $payment->getId());
-        $paymentData = $this->request(self::METHOD_POST, $resource, [], 
-            [
-                'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
-                    'controller' => 'QuickPay',
-                    'action' => 'callback',
-                    'forceSecure' => true,
-                    'module' => 'frontend'
-                ])
-            ]);
-        
-        $this->handleNewOperation($payment, (object) array(
+        $operation = $this->handleNewOperation($payment, (object) array(
             'type' => 'cancel_request',
             'id' => null,
             'amount' => 0
         ));
+        
+        try
+        {
+
+            $resource = sprintf('/payments/%s/cancel', $payment->getId());
+            $paymentData = $this->request(self::METHOD_POST, $resource, [], 
+                [
+                    'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
+                        'controller' => 'QuickPay',
+                        'action' => 'callback',
+                        'forceSecure' => true,
+                        'module' => 'frontend'
+                    ])
+                ]);
+            
+        } catch (Exception $ex) {
+            Shopware()->Models()->remove($operation);
+            Shopware()->Models()->flush($operation);
+            
+            throw $e;
+        }        
     }
 
     /**
@@ -520,26 +542,38 @@ class QuickPayService
         if($amount <= 0 || $amount > $payment->getAmountCaptured() - $payment->getAmountRefunded())
         {
             throw new Exception('Invalid amount');
+        
         }
         
-        $resource = sprintf('/payments/%s/refund', $payment->getId());
-        $paymentData = $this->request(self::METHOD_POST, $resource, [
-                'amount' => $amount
-            ], 
-            [
-                'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
-                    'controller' => 'QuickPay',
-                    'action' => 'callback',
-                    'forceSecure' => true,
-                    'module' => 'frontend'
-                ])
-            ]);
-        
-        $this->handleNewOperation($payment, (object) array(
+        $operation = $this->handleNewOperation($payment, (object) array(
             'type' => 'refund_request',
             'id' => null,
             'amount' => $amount
         ));
+        
+        try
+        {
+            
+            $resource = sprintf('/payments/%s/refund', $payment->getId());
+            $paymentData = $this->request(self::METHOD_POST, $resource, [
+                    'amount' => $amount
+                ], 
+                [
+                    'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
+                        'controller' => 'QuickPay',
+                        'action' => 'callback',
+                        'forceSecure' => true,
+                        'module' => 'frontend'
+                    ])
+                ]);
+
+        } catch (Exception $ex) {
+            Shopware()->Models()->remove($operation);
+            Shopware()->Models()->flush($operation);
+            
+            throw $e;
+        }
+        
     }
     
     /**
