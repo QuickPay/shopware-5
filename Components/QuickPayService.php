@@ -110,11 +110,17 @@ class QuickPayService
     public function loadPaymentOperations($payment)
     {
         $resource = sprintf('/payments/%s', $payment->getId());
-
-        //Get payment data
-        $paymentData = $this->request(self::METHOD_GET, $resource, []);
         
-        $this->registerCallback($payment, $paymentData);
+        try{
+            //Get payment data
+            $paymentData = $this->request(self::METHOD_GET, $resource, []);
+
+            $this->registerCallback($payment, $paymentData);
+        }
+        catch (Exception $e)
+        {
+            
+        }
     }
     
     /**

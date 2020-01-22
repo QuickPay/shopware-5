@@ -9,6 +9,7 @@
     //{include file="backend/order/quickpay/view/detail/cancel_confirm_window.js"}
     //{include file="backend/order/quickpay/view/detail/refund_confirm_window.js"}
     //{include file="backend/order/quickpay/view/detail/confirm_panel.js"}
+    //{include file="backend/order/quickpay/view/detail/debit.js"}
     //{include file="backend/order/quickpay/view/list/operation.js"}
     //{include file="backend/order/quickpay/view/list/list.js"}
     //{include file="backend/order/quickpay/view/detail/window.js"}
