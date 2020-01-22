@@ -93,6 +93,9 @@ class Backend implements SubscriberInterface
         
         $action = $request->getParam('quickpayAction');
         
+        if(empty($action))
+            return;
+        
         /** @var \QuickPayPayment\Components\QuickPayService $service */
         $service = $this->container->get('quickpay_payment.quickpay_service');
         
