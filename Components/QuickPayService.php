@@ -323,7 +323,7 @@ class QuickPayService
                     {
                         $amountRefunded += $operation->getAmount();
 
-                        if($amountCaptured <= $$amountRefunded)
+                        if($amountCaptured <= $amountRefunded)
                         {
                             $status = QuickPayPayment::PAYMENT_FULLY_REFUNDED;
                         }
