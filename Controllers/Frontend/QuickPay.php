@@ -348,9 +348,15 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 break;
             case QuickPayPayment::PAYMENT_PARTLY_CAPTURED:
             case QuickPayPayment::PAYMENT_FULLY_CAPTURED:
-                if($payment->getAmountCaptured() >= $payment->getOrder()->getInvoiceAmount())
+                $order = $payment->getOrder();
+                if($payment->getAmountCaptured() >= $order->getInvoiceAmount())
                 {
                     $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_COMPLETELY_PAID);
+                    if(empty($order->getClearedDate()))
+                    {
+                        $order->setClearedDate(new DateTime());
+                        Shopware()->Models()->flush($order);
+                    }
                 }
                 else
                 {
