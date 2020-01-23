@@ -153,12 +153,16 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                             $this->session->offsetSet('sComment', $data->variables->comment);
                         }
                         
-                        //Make sure the order is persisted
-                        $this->checkAndPersistOrder($payment);
-                            
                         $this->service->registerCallback($payment, $data);
                         
-                        $this->updateOrderStatus($payment);
+                        //Check if the payment was at least authorized
+                        if($payment->getStatus() != QuickPayPayment::PAYMENT_CREATED)
+                        {
+                            //Make sure the order is persisted
+                            $this->checkAndPersistOrder($payment);
+                            
+                            $this->updateOrderStatus($payment);
+                        }
                         
                         $responseCode = 200;
                         
@@ -344,9 +348,15 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 break;
             case QuickPayPayment::PAYMENT_PARTLY_CAPTURED:
             case QuickPayPayment::PAYMENT_FULLY_CAPTURED:
-                if($payment->getAmountCaptured() >= $payment->getOrder()->getInvoiceAmount())
+                $order = $payment->getOrder();
+                if($payment->getAmountCaptured() >= $order->getInvoiceAmount())
                 {
                     $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_COMPLETELY_PAID);
+                    if(empty($order->getClearedDate()))
+                    {
+                        $order->setClearedDate(new DateTime());
+                        Shopware()->Models()->flush($order);
+                    }
                 }
                 else
                 {

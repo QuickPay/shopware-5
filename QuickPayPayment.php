@@ -94,6 +94,11 @@ class QuickPayPayment extends Plugin
             }
 
         }
+        else if (version_compare($currentVersion, '2.0.1', '<'))
+        {
+            $this->createTables();
+            $this->updateOperationsStaus();
+        }
 
         $context->scheduleClearCache(InstallContext::CACHE_LIST_ALL);
         
@@ -219,6 +224,18 @@ class QuickPayPayment extends Plugin
             $service->createPaymentRetroactively($order);
         }
         
+    }
+    
+    private function updateOperationsStaus()
+    {
+        $payments = Shopware()->Models()->getRepository(PaymentModel::class)->findAll();
+        
+        $service = new Components\QuickPayService();
+        
+        foreach ($payments as $payment)
+        {
+            $service->loadPaymentOperations($payment);
+        }        
     }
     
 }

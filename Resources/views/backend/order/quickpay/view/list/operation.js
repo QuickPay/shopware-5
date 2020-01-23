@@ -8,6 +8,7 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.Operation',
             createdAt: '{s name=operation/columns/created_at}Date{/s}',
             type: '{s name=operation/columns/type}Action{/s}',
             amount: '{s name=operation/columns/amount}Amount{/s}',
+            status: '{s name=operation/columns/status}Status{/s}'
         },
         operations: {
             create: '{s name=operation/types/create}Payment created{/s}',
@@ -19,7 +20,24 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.Operation',
             cancel: '{s name=operation/types/cancel}Payment cancelled{/s}',
             cancel_request: '{s name=operation/types/cancel_request}Payment cancel requested{/s}',
             checksum_failure: '{s name=operation/types/checksum_failure}Callback checksum failure{/s}',
-            test_mode_violation: '{s name=operation/types/test_mode_violation}Test mode violation{/s}'
+            test_mode_violation: '{s name=operation/types/test_mode_violation}Test mode violation{/s}',
+            failed: {
+                authorize: '{s name=operation/types/authorize_failed}Payment not authorized{/s}',
+                capture: '{s name=operation/types/capture_failed}Payment not captured{/s}',
+                cancel: '{s name=operation/types/cancel_failed}Payment not cancelled{/s}',
+                refund: '{s name=operation/types/refund_failed}Payment not refunded{/s}',
+            }    
+        },
+        status: {
+            '20000': 'Approved',
+            '20200': 'Waiting approval',
+            '30100': '3D Secure is required',
+            '40000': 'Rejected By Acquirer',
+            '40001': 'Request Data Error',
+            '40002': 'Authorization expired',
+            '40003': 'Aborted',
+            '50000': 'Gateway Error',
+            '50300': 'Communications Error (with Acquirer)'
         }
     },
     
@@ -50,6 +68,12 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.Operation',
                 renderer: me.typeRenderer
             },
             {
+                header: me.snippets.columns.status,
+                dataIndex: 'status',
+                flex: 1,
+                renderer: me.statusRenderer
+            },
+            {
                 header: me.snippets.columns.amount,
                 dataIndex: 'amount',
                 flex: 1,
@@ -58,10 +82,23 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.Operation',
         ];
     },
     
-    typeRenderer: function(type)
+    typeRenderer: function(type, metaData, record)
     {
         var me = this;
-        return me.snippets.operations[type];
+        var status = record.get('status');
+        if(!status || status == '20000')
+            return me.snippets.operations[type];
+        else
+            return me.snippets.operations.failed[type];
+    },
+    
+    statusRenderer: function(code)
+    {
+        var me = this;
+        if(code)
+            return me.snippets.status[code];
+        else
+            return '';
     },
     
     dateRenderer: function(date)
