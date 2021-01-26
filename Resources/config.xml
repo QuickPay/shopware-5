@@ -17,5 +17,33 @@
             <label lang="en">Testmode Enabled</label>
             <value>0</value>
         </element>
+        <element required="true" type="select">
+            <name>log_level</name>
+            <label lang="de">Logging Level</label>
+            <label lang="en">Logging level</label>
+            <value>info</value>
+            <store>
+                <option>
+                    <value>debug</value>
+                    <label lang="de">DEBUG</label>
+                    <label lang="en">DEBUG</label>
+                </option>
+                <option>
+                    <value>info</value>
+                    <label lang="de">INFO</label>
+                    <label lang="en">INFO</label>
+                </option>
+                <option>
+                    <value>warning</value>
+                    <label lang="de">WARNING</label>
+                    <label lang="en">WARNING</label>
+                </option>
+                <option>
+                    <value>error</value>
+                    <label lang="de">ERROR</label>
+                    <label lang="en">ERROR</label>
+                </option>
+            </store>
+        </element>
     </elements>
 </config>

@@ -3,10 +3,13 @@
     <label lang="de">QuickPay Payment</label>
     <label lang="en">QuickPay Payment</label>
 
-    <version>2.1.0</version>
+    <version>2.2.0</version>
     <link>https://quickpay.net</link>
     <author>QuickPay ApS</author>
     <compatibility minVersion="5.3.0" />
+    <changelog version="2.2.0">
+        <changes lang="en">Added extended logging</changes>
+    </changelog>
     <changelog version="2.1.0">
         <changes lang="en">
            Added QuickPay payment ID to the backend order details view
