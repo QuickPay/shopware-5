@@ -5,6 +5,7 @@ namespace QuickPayPayment\Components;
 use Exception;
 use QuickPayPayment\Models\QuickPayPayment;
 use QuickPayPayment\Models\QuickPayPaymentOperation;
+use Shopware\Components\Logger;
 use Shopware\Components\Random;
 use Shopware\Models\Customer\Customer;
 use function Shopware;
@@ -18,6 +19,24 @@ class QuickPayService
     const METHOD_GET = 'GET';
     const METHOD_PATCH = 'PATCH';
 
+    /**
+     * @var Shopware\Components\Logger
+     */
+    private $logger;
+    
+    public function __construct($logger)
+    {
+        $this->logger = $logger;
+    }
+    
+    public function log($level, $message, $context = [])
+    {
+        if(!is_array($context))
+            $context = get_object_vars ($context);
+        
+        $this->logger->log($level, $message, $context);
+    }
+    
     /**
      * Create payment
      *
@@ -37,9 +56,11 @@ class QuickPayService
             'variables' => $variables
         ];
         
+        $this->log(Logger::DEBUG, 'payment creation requested', $parameters);
         //Create payment
         $paymentData = $this->request(self::METHOD_POST, '/payments', $parameters);
-
+        $this->log(Logger::INFO, 'payment created', $paymentData);
+        
         //Register payment in database 
         $customer = Shopware()->Models()->find(Customer::class, $userId);
         
@@ -103,7 +124,7 @@ class QuickPayService
     }
     
     /**
-     * Load the payment data through the QuickPay API and update the operaitons
+     * Load the payment data through the QuickPay API and update the operations
      * 
      * @param QuickPayPayment $payment
      */
@@ -139,9 +160,11 @@ class QuickPayService
         
         $resource = sprintf('/payments/%s', $paymentId);
         
+        $this->log(Logger::DEBUG, 'payment update requested', $parameters);
         //Update payment
         $paymentData = $this->request(self::METHOD_PATCH, $resource, $parameters);
-
+        $this->log(Logger::INFO, 'payment updated', $paymentData);
+        
         $payment = $this->getPayment($paymentId);
         
         //Update amount to pay
@@ -420,14 +443,17 @@ class QuickPayService
     public function createPaymentLink($payment, $email, $continueUrl, $cancelUrl, $callbackUrl)
     {
         $resource = sprintf('/payments/%s/link', $payment->getId());
-        $paymentLink = $this->request(self::METHOD_PUT, $resource, [
+        $parameters = [
             'amount'             => $payment->getAmount(),
             'continueurl'        => $continueUrl,
             'cancelurl'          => $cancelUrl,
             'callbackurl'        => $callbackUrl,
             'customer_email'     => $email,
             'language'           => $this->getLanguageCode()
-        ]);
+        ];
+        $this->log(Logger::DEBUG, 'payment link creation requested', $parameters);
+        $paymentLink = $this->request(self::METHOD_PUT, $resource, $parameters);
+        $this->log(Logger::INFO, 'payment link created', $paymentLink);
 
         return $paymentLink->url;
     }
@@ -461,6 +487,7 @@ class QuickPayService
         {
         
             $resource = sprintf('/payments/%s/capture', $payment->getId());
+            $this->log(Logger::DEBUG, 'payment capture requested');
             $paymentData = $this->request(self::METHOD_POST, $resource, [
                     'amount' => $amount
                 ], 
@@ -472,11 +499,14 @@ class QuickPayService
                         'module' => 'frontend'
                     ])
                 ]);
+            $this->log(Logger::INFO, 'payment captured', $paymentData);
         }
         catch (Exception $e)
         {
             Shopware()->Models()->remove($operation);
             Shopware()->Models()->flush($operation);
+            
+            $this->log(Logger::Error, 'exception during capture', ['message' => $ex->getMessage()]);
             
             throw $e;
         }
@@ -512,6 +542,7 @@ class QuickPayService
         {
 
             $resource = sprintf('/payments/%s/cancel', $payment->getId());
+            $this->log(Logger::DEBUG, 'payment cancellation requested');
             $paymentData = $this->request(self::METHOD_POST, $resource, [], 
                 [
                     'QuickPay-Callback-Url' => Shopware()->Front()->Router()->assemble([
@@ -521,10 +552,13 @@ class QuickPayService
                         'module' => 'frontend'
                     ])
                 ]);
+            $this->log(Logger::DEBUG, 'payment canceled', $paymentData);
             
         } catch (Exception $ex) {
             Shopware()->Models()->remove($operation);
             Shopware()->Models()->flush($operation);
+            
+            $this->log(Logger::Error, 'exception during cancellation', ['message' => $ex->getMessage()]);
             
             throw $e;
         }        
@@ -561,6 +595,7 @@ class QuickPayService
         {
             
             $resource = sprintf('/payments/%s/refund', $payment->getId());
+            $this->log(Logger::DEBUG, 'payment refund requested');
             $paymentData = $this->request(self::METHOD_POST, $resource, [
                     'amount' => $amount
                 ], 
@@ -572,10 +607,13 @@ class QuickPayService
                         'module' => 'frontend'
                     ])
                 ]);
+            $this->log(Logger::DEBUG, 'payment refunded', $paymentData);
 
         } catch (Exception $ex) {
             Shopware()->Models()->remove($operation);
             Shopware()->Models()->flush($operation);
+            
+            $this->log(Logger::Error, 'exception during refund', ['message' => $ex->getMessage()]);
             
             throw $e;
         }
@@ -609,10 +647,12 @@ class QuickPayService
 
         curl_setopt_array($ch, $options);
 
+        $this->log(Logger::DEBUG, 'request sent', $options);
         //Get response
         $result = curl_exec($ch);
         $responseCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
+        $this->log(Logger::DEBUG, 'request finished', ['code' => $responseCode, 'response' => $result]);
+        
         curl_close($ch);
 
         //Validate reponsecode
