@@ -4,7 +4,7 @@ use Enlight_Components_Session_Namespace;
 use QuickPayPayment\Components\QuickPayService;
 use QuickPayPayment\Models\QuickPayPayment;
 use Shopware\Components\CSRFWhitelistAware;
-use Shopware\Models\Order\Order;
+use Shopware\Components\Logger;
 use Shopware\Models\Order\Status;
 
 class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Frontend_Payment implements CSRFWhitelistAware
@@ -38,6 +38,8 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
 
         try {
             
+            $this->log(Logger::DEBUG, 'redirect action called');
+            
             //Get current payment id if it exists in the session
             $paymentId = $this->session->offsetGet('quickpay_payment_id');
             
@@ -53,6 +55,11 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             {   
                 //Create new payment
                 $payment = $this->service->createPayment($this->session->offsetGet('sUserId'), $this->getBasket(), $amount, $variables, $this->getCurrencyShortName());
+                $this->log(Logger::DEBUG, 'new payment created in redirect', [
+                    'id' => $payment->getId(),
+                    'variables' => $variables,
+                    'amount' => $amount
+                ]);
             }
             else
             {
@@ -64,11 +71,21 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 {
                     //Update existing QuickPay payment
                     $payment = $this->service->updatePayment($paymentId, $this->getBasket(), $amount, $variables);
+                    $this->log(Logger::DEBUG, 'payment updated in redirect', [
+                        'id' => $payment->getId(),
+                        'variables' => $variables,
+                        'amount' => $amount
+                    ]);
                 }
                 else
                 {
                     //Create new payment
                     $payment = $this->service->createPayment($this->session->offsetGet('sUserId'), $this->getBasket(), $amount, $variables, $this->getCurrencyShortName());
+                    $this->log(Logger::DEBUG, 'new payment created in redirect', [
+                        'id' => $payment->getId(),
+                        'variables' => $variables,
+                        'amount' => $amount
+                    ]);
                 }
             }
             
@@ -79,10 +96,12 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 //delete the previously persisted basket
                 $persister = $this->get('basket_persister');
                 $persister->delete($signature);
+                $this->log(Logger::DEBUG, 'previous basket deleted in redirect', ['signature' => $signature]);
 
             }
             //persist the current basket
             $payment->setBasketSignature($this->persistBasket());
+            $this->log(Logger::DEBUG, 'basket persisted in redirect', ['signature' => $payment->getBasketSignature()]);
             
             // Save ID to session
             $this->session->offsetSet('quickpay_payment_id', $payment->getId());
@@ -102,6 +121,8 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             $payment->setLink($paymentLink);
             Shopware()->Models()->flush($payment);
             
+            $this->log(Logger::DEBUG, 'redirected', ['url' => $paymentLink]);
+            
             //Redirect to the payment page
             $this->redirect($paymentLink);
         } catch (Exception $e) {
@@ -114,14 +135,14 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
      */
     public function callbackAction()
     {
-        $logger = $this->get('pluginlogger');
-        
         // Prevent error from missing template
         $this->Front()->Plugins()->ViewRenderer()->setNoRender();
 
         //Validate & save order
         $requestBody = $this->Request()->getRawBody();
         $data = json_decode($requestBody);
+        
+        $this->log(Logger::DEBUG, 'callback action called', $data);
 
         //By default return error code
         $responseCode = 400;
@@ -154,14 +175,24 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                         }
                         
                         $this->service->registerCallback($payment, $data);
+                        $this->log(Logger::DEBUG, 'callback registered', $data);
                         
                         //Check if the payment was at least authorized
                         if($payment->getStatus() != QuickPayPayment::PAYMENT_CREATED)
                         {
+                            $this->log(Logger::DEBUG, 'persisting order in callback', [
+                                'payment' => $payment->getId()
+                            ]);
                             //Make sure the order is persisted
                             $this->checkAndPersistOrder($payment);
+                            $this->log(Logger::DEBUG, 'order peristed in callback', [
+                                'payment' => $payment->getId()
+                            ]);
                             
                             $this->updateOrderStatus($payment);
+                            $this->log(Logger::DEBUG, 'updating order status in callback', [
+                                'payment' => $payment->getId()
+                            ]);
                         }
                         
                         $responseCode = 200;
@@ -173,21 +204,21 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                         //Wrong test mode settings were used
                         $this->service->registerTestModeViolationCallback($payment, $data);
                         if($data->test_mode)
-                            $logger->warning('payment with wrong test card attempted', json_decode($requestBody, true));
+                            $this->log(Logger::WARNING, 'payment with wrong test card attempted', json_decode($requestBody, true));
                         else
-                            $logger->warning('payment with real data during test mode', json_decode($requestBody, true));
+                            $this->log(Logger::WARNING, 'payment with real data during test mode', json_decode($requestBody, true));
                         
                     }
                 }
                 else
                 {
                     $this->service->registerFalseChecksumCallback($payment, $data);
-                    $logger->warning('Checksum mismatch', json_decode($requestBody, true));
+                    $this->log(Logger::WARNING, 'Checksum mismatch', json_decode($requestBody, true));
                 }
             }
             else
             {
-                $logger->info('Unkown payment id', json_decode($requestBody, true));
+                $this->log(Logger::INFO, 'Unkown payment id', json_decode($requestBody, true));
             }
         }
 
@@ -201,6 +232,8 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
     {
         $paymentId = $this->session->offsetGet('quickpay_payment_id');
         
+        $this->log(Logger::DEBUG, 'success action called', ['payment' => $paymentId]);
+        
         if(empty($paymentId))
         {
             $this->redirect(['controller' => 'checkout', 'action' => 'confirm']);    
@@ -208,7 +241,9 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
         }
 
         $payment = $this->service->getPayment($paymentId);
+        $this->log(Logger::DEBUG, 'persisting order in success action', ['payment' => $paymentId]);
         $this->checkAndPersistOrder($payment, true);
+        $this->log(Logger::DEBUG, 'order persisted in success action', ['payment' => $paymentId]);
         
         //Remove ID from session
         $this->session->offsetUnset('quickpay_payment_id');
@@ -302,25 +337,57 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
      */
     private function checkAndPersistOrder($payment, $removeTemporaryOrder = false)
     {
+        $this->log(Logger::DEBUG, 'checkAndPersistOrder: called', [
+            'payment' => $payment->getId(),
+            'removeTemporaryOrder' => $removeTemporaryOrder
+        ]);
         if(empty($payment->getOrderNumber()))
         {
+            $this->log(Logger::DEBUG, 'checkAndPersistOrder: order number not set', [
+                'payment' => $payment->getId(),
+                'signature' => $payment->getBasketSignature()
+            ]);
             //Restore the temporary basket
             $this->loadBasketFromSignature($payment->getBasketSignature());
-
+            $this->log(Logger::DEBUG, 'checkAndPersistOrder: basket loaded', [
+                'payment' => $payment->getId(),
+                'signature' => $payment->getBasketSignature()
+            ]);
             //Finally persist the order
             $orderNumber = $this->saveOrder($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_OPEN);
-
+            $this->log(Logger::DEBUG, 'checkAndPersistOrder: order saved', [
+                'payment' => $payment->getId(),
+                'order_number' => $orderNumber
+            ]);
             //Update the payment object
             $payment->setOrderNumber($orderNumber);
+            $this->log(Logger::DEBUG, 'checkAndPersistOrder: order_number updated', [
+                'payment' => $payment->getId(),
+            ]);
             $payment->setBasketSignature(null);
-
+            $this->log(Logger::DEBUG, 'checkAndPersistOrder: basket nulled', [
+                'payment' => $payment->getId(),
+            ]);
             //Save the changes
             Shopware()->Models()->flush($payment);
+            $this->log(Logger::DEBUG, 'checkAndPersistOrder: payment saved to database', [
+                'payment' => $payment->getId(),
+            ]);
+            
+            $this->log(Logger::INFO, 'order process finished', [
+                'payment' => $payment->getId(),
+                'order_number' => $orderNumber,
+            ]);
         }
         else if($removeTemporaryOrder)
         {
+            $this->log(Logger::DEBUG, 'checkAndPersistOrder: removing temporary order', [
+                'payment' => $payment->getId(),
+            ]);
             Shopware()->Modules()->Order()->sDeleteTemporaryOrder();
-            
+            $this->log(Logger::DEBUG, 'checkAndPersistOrder: temporary order removed', [
+                'payment' => $payment->getId(),
+            ]);
             Shopware()->Db()->executeUpdate(
                 'DELETE FROM s_order_basket WHERE sessionID=?',
                 [$this->session->offsetGet('sessionId')]
@@ -330,8 +397,13 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 $variables = $this->session->offsetGet('sOrderVariables');
                 $variables['sOrderNumber'] = $payment->getOrderNumber();
                 $this->session->offsetSet('sOrderVariables', $variables);
+                $this->log(Logger::DEBUG, 'checkAndPersistOrder: order number in session updated', [
+                    'payment' => $payment->getId(),
+                    'order_number' => $payment->getOrderNumber()
+                ]);
             }
         }
+        $this->log(Logger::DEBUG, 'checkAndPersistOrder: finished');
     }
     
     /**
@@ -373,6 +445,11 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 $this->savePaymentStatus($payment->getOrderId(), $payment->getId(), Status::PAYMENT_STATE_REVIEW_NECESSARY);
                 break;
         }
+    }
+    
+    private function log($level, $message, $context = [])
+    {
+        $this->service->log($level, $message, $context);
     }
     
 }
