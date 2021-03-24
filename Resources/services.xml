@@ -5,12 +5,27 @@
     <services>
         <service id="quickpay_payment.quickpay_service"
                  class="QuickPayPayment\Components\QuickPayService">
+            <argument type="service" id="quickpay_payment.logger"/>
         </service>
         <service id="quickpay_payment.subscriber.backend"
                  class="QuickPayPayment\Subscriber\Backend">
             <argument type="service" id="service_container" />
             <argument>%quick_pay_payment.plugin_dir%</argument>
             <tag name="shopware.event_subscriber"/>
+        </service>
+        <service id="quickpay_payment.log_handler" class="QuickPayPayment\Components\LogHandler">
+            <argument>%kernel.logs_dir%/quickpay_%kernel.environment%.log</argument>
+            <argument type="service" id="shopware.plugin.cached_config_reader"/>
+            <argument>%quick_pay_payment.plugin_name%</argument>
+            <call method="pushProcessor">
+                <argument type="service" id="monolog.processor.uid" />
+            </call>
+        </service>
+        <service id="quickpay_payment.logger" class="Shopware\Components\Logger">
+            <argument>quickpay</argument>
+            <call method="pushHandler">
+                <argument type="service" id="quickpay_payment.log_handler" />
+            </call>
         </service>
     </services>
 </container>
