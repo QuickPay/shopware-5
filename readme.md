@@ -30,6 +30,8 @@ The public and private key can be found in the QuickPay management panel under S
 
 In order to use the QuickPay payment method the it has to be activated using the Payment methods window in the Shopware backend. Enabling it for different shipping methods might also be necessary
 
+Card logos can be added to checkout payment method selector section with HTML IMG tags. Insert the HTML code to the description of QuickPay Payment gateway.
+
 ## Backend functionality ##
 The following actions can be performed in the Shopware backend:
 
