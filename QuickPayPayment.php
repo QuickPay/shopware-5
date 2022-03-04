@@ -1,9 +1,5 @@
 <?php
-/*
- * created on 26/02/2020 :  by  -  akshay Nihare 
- * https://github.com/akshaynikhare
- * 
- */
+
 
 namespace QuickPayPayment;
 
@@ -24,8 +20,8 @@ use Shopware\Models\Order\Status as OrderStatus;
  * Quickpay Payment Gateway
  * @category Quickpay Plugin
  * @package QuickPayPayment
- * @author Akshay Nikhare
- * @copyright Akshay Nikhare
+ * @author Dev1
+ * @copyright Dev1
  * @version 2.2.1
  *
  */

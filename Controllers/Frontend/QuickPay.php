@@ -1,9 +1,5 @@
 <?php
-/*
- * created on 26/02/2020 :  by  -  akshay Nihare 
- * https://github.com/akshaynikhare
- * 
- */
+
 use Enlight_Components_Session_Namespace;
 use QuickPayPayment\Components\QuickPayService;
 use QuickPayPayment\Models\QuickPayPayment;

@@ -1,9 +1,5 @@
 <?php
-/*
- * created on 26/02/2020 :  by  -  akshay Nihare 
- * https://github.com/akshaynikhare
- * 
- */
+
 use QuickPayPayment\Models\QuickPayPayment;
 use QuickPayPayment\Models\QuickPayPaymentOperation;
 class Shopware_Controllers_Backend_QuickPay extends Shopware_Controllers_Backend_Application

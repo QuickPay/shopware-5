@@ -1,9 +1,5 @@
 <?php
-/*
- * created on 26/02/2020 :  by  -  akshay Nihare 
- * https://github.com/akshaynikhare
- * 
- */
+
 namespace QuickPayPayment\Models;
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;

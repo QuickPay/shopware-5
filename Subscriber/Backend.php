@@ -1,9 +1,5 @@
 <?php
-/*
- * created on 26/02/2020 :  by  -  akshay Nihare 
- * https://github.com/akshaynikhare
- * 
- */
+
 namespace QuickPayPayment\Subscriber;
 use Enlight\Event\SubscriberInterface;
 use Shopware\Components\DependencyInjection\Container;

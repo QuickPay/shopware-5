@@ -6,16 +6,16 @@
   },
   "authors": [
     {
-      "name": "Akshay Nikhare",
-      "email": "akshay.victrans@gmail.com",
-      "homepage": "https://github.com/akshaynikhare",
+      "name": "Dev1",
+      "email": "",
+      "homepage": "",
       "role": "Developer"
     }
   ],
   "extra": {
     "supportLink": {
-      "de-DE": "https://github.com/akshaynikhare",
-      "en-GB": "https://github.com/akshaynikhare"
+      "de-DE": "",
+      "en-GB": ""
     }
   }
 }

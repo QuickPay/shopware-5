@@ -1,9 +1,5 @@
 <?php
-/*
- * created on 26/02/2020 :  by  -  akshay Nihare 
- * https://github.com/akshaynikhare
- * 
- */
+
 namespace QuickPayPayment\Components;
 use Monolog\Handler\RotatingFileHandler;
 use Monolog\Logger;
