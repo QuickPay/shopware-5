@@ -2,7 +2,6 @@
 Ext.define('Shopware.apps.Order.QuickPay.model.Payment',
 {
     extend: 'Ext.data.Model',
-
     fields: [
         { name: 'id', type: 'string' },
         { name: 'createdAt', type: 'date' },
@@ -17,14 +16,11 @@ Ext.define('Shopware.apps.Order.QuickPay.model.Payment',
     ],
     
     hasMany: { model: 'Shopware.apps.Order.QuickPay.model.Operation', name: 'operations' },
-
     proxy: {
         type: 'ajax',
-
         api: {
             read:'{url controller="QuickPay" action="detail"}',
         },
-
         reader: {
             type: 'json',
             root: 'data',

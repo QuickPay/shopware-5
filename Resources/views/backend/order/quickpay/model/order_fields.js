@@ -1,5 +1,4 @@
 //{namespace name="plugins/quickpay"}
-
 //{block name="backend/order/model/order/fields" append}
 	{ name: 'quickpay_payment_id', type: 'string', defaultValue: null },
         { name: 'quickpay_payment_status', type: 'int' },

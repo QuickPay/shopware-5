@@ -2,21 +2,13 @@
 Ext.define('Shopware.apps.Order.QuickPay.view.detail.ConfirmPanel',
 {
     extend: 'Ext.form.Panel',
-
     alias: 'widget.order-quickpay-confirm-panel',
-
     cls: Ext.baseCSSPrefix + 'order-quickpay-confirm-panel',
-
     flex: 1,
-
     bodyPadding: '10 10 10 10',
-
     border: 0,
-
     autoScroll: true,
-
     collapsible: false,
-
     snippets:
     {
         buttons:
@@ -25,34 +17,18 @@ Ext.define('Shopware.apps.Order.QuickPay.view.detail.ConfirmPanel',
             cancel: '{s name=order/buttons/cancel}Cancel{/s}'
         }
     },
-
     /**
      *
      */
     initComponent:function()
     {
         var me = this;
-
         me.registerEvents();
-
         me.items = [
             me.createDetailsContainer(),
-
             me.createButtonsContainer()
         ];
-
         me.callParent(arguments);
-    },
-
-    /**
-     *
-     */
-    registerEvents: function()
-    {
-        this.addEvents(
-            'confirmOperation',
-            'cancelOperation'
-        );
     },
 
     /**
@@ -61,7 +37,6 @@ Ext.define('Shopware.apps.Order.QuickPay.view.detail.ConfirmPanel',
     createDetailsContainer: function()
     {
         var me = this;
-
         me.detailsContainer = Ext.create('Ext.form.Panel', {
             cls: 'confirm-panel-main',
             bodyPadding: 5,
@@ -74,10 +49,9 @@ Ext.define('Shopware.apps.Order.QuickPay.view.detail.ConfirmPanel',
             },
             items: me.createFields()   
         });
-
         return me.detailsContainer;
     },
-
+  
     createFields: function() {
         var me = this;
                 
@@ -93,7 +67,6 @@ Ext.define('Shopware.apps.Order.QuickPay.view.detail.ConfirmPanel',
                 value: me.data.id
             }
         ];
-        
         if(me.maxAmount > 0)
         {
             items.push({
@@ -113,14 +86,11 @@ Ext.define('Shopware.apps.Order.QuickPay.view.detail.ConfirmPanel',
                 value: 0
             });
         }
-        
         return items;
     },
-
     createButtonsContainer: function()
     {
         var me = this;
-
         return Ext.create('Ext.toolbar.Toolbar', {
             dock: 'bottom',
             ui: 'shopware-ui',
@@ -156,6 +126,16 @@ Ext.define('Shopware.apps.Order.QuickPay.view.detail.ConfirmPanel',
                 })
             ]
         });
+    },
+    /**
+ *
+ */
+    registerEvents: function()
+    {
+        this.addEvents(
+            'confirmOperation',
+            'cancelOperation'
+        );
     }
     
 });

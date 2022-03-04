@@ -2,39 +2,32 @@
 Ext.define('Shopware.apps.Order.QuickPay.view.list.List',
 {
     override: 'Shopware.apps.Order.view.list.List',
-
     quickpaySnippets: {
         columns: {
             quickpay: '{s name=column/quickpay}QuickPay Actions{/s}',
             capturePayment: '{s name=column/capture_payment}Capture payment{/s}'
         }
     },
-
     initComponent:function()
     {
         var me = this;
-
         me.registerEvents();
         me.callParent(arguments);
     },
-
     registerEvents: function()
     {
         var me = this;
-        
         me.addEvents(
             'showCaptureConfirmWindow',
             'showCancelConfirmWindow',
             'showRefundConfirmWindow',
         );
-
         me.callParent(arguments);
     },
         
     operationFinished(operation, cancelled)
     {
         var me = this;
-
         if(!cancelled)
         {
             me.getStore().reload();
@@ -43,10 +36,8 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.List',
         
     getColumns:function()
     {
-
         var me = this;
         var columns = me.callParent(arguments);
-
         var quickpayActionColumn = Ext.create('Ext.grid.column.Action', {
             width:30,
             text: 'QP',
@@ -76,20 +67,16 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.List',
                 }
             ],
         });
-
         return Ext.Array.insert(columns, 11, [quickpayActionColumn]);
     },
-
     isQuickpayOrder: function(record)
     {
         return record.get('quickpay_payment_id') ? true : false;
     },
-
     isCaptureEnabled: function(record)
     {
         return record.get('quickpay_payment_status') === 5;
     },
-
     getPaymentData: function(record)
     {
         return {
@@ -99,5 +86,4 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.List',
             amountRefunded: record.get('quickpay_amount_refunded')
         };
     }
-
 });

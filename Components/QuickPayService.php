@@ -1,7 +1,10 @@
 <?php
-
+/*
+ * created on 26/02/2020 :  by  -  akshay Nihare 
+ * https://github.com/akshaynikhare
+ * 
+ */
 namespace QuickPayPayment\Components;
-
 use Exception;
 use QuickPayPayment\Models\QuickPayPayment;
 use QuickPayPayment\Models\QuickPayPaymentOperation;
@@ -9,16 +12,14 @@ use Shopware\Components\Logger;
 use Shopware\Components\Random;
 use Shopware\Models\Customer\Customer;
 use function Shopware;
-
 class QuickPayService
 {
     private $baseUrl = 'https://api.quickpay.net';
-
     const METHOD_POST = 'POST';
     const METHOD_PUT = 'PUT';
     const METHOD_GET = 'GET';
     const METHOD_PATCH = 'PATCH';
-
+   
     /**
      * @var Shopware\Components\Logger
      */
@@ -33,7 +34,6 @@ class QuickPayService
     {
         if(!is_array($context))
             $context = get_object_vars ($context);
-        
         $this->logger->log($level, $message, $context);
     }
     
@@ -49,17 +49,17 @@ class QuickPayService
     public function createPayment($userId, $basket, $amount, $variables, $currency)
     {
         $orderId = $this->createOrderId();
-        
         $parameters = [
             'currency' => $currency,
             'order_id' => $orderId,
             'variables' => $variables
         ];
-        
+
+
         $this->log(Logger::DEBUG, 'payment creation requested', $parameters);
         //Create payment
         $paymentData = $this->request(self::METHOD_POST, '/payments', $parameters);
-        $this->log(Logger::INFO, 'payment created', $paymentData);
+        $this->log(Logger::INFO, 'payment created', $paymentData); 
         
         //Register payment in database 
         $customer = Shopware()->Models()->find(Customer::class, $userId);
@@ -69,6 +69,10 @@ class QuickPayService
         Shopware()->Models()->persist($payment);
         Shopware()->Models()->flush($payment);
         
+        
+
+
+
         $this->handleNewOperation($payment, (object) array(
             'type' => 'create',
             'id' => null,
@@ -76,10 +80,9 @@ class QuickPayService
             'created_at' => date(),
             'payload' => $paymentData
         ));
-        
+ 
         return $payment;
     }
-
     /**
      * Get payment data for orders created with a previous version of the plugin
      * 
@@ -91,9 +94,7 @@ class QuickPayService
             $paymentId = $order->getTemporaryId();
             
             $parameters = [];
-
             $resource = sprintf('/payments/%s', $paymentId);
-
             //Get payment
             $paymentData = $this->request(self::METHOD_GET, $resource, $parameters);
             
@@ -104,7 +105,6 @@ class QuickPayService
             
             Shopware()->Models()->persist($payment);
             Shopware()->Models()->flush($payment);
-
             $this->handleNewOperation($payment, (object) array(
                 'type' => 'create',
                 'id' => null,
@@ -131,11 +131,9 @@ class QuickPayService
     public function loadPaymentOperations($payment)
     {
         $resource = sprintf('/payments/%s', $payment->getId());
-        
         try{
             //Get payment data
             $paymentData = $this->request(self::METHOD_GET, $resource, []);
-
             $this->registerCallback($payment, $paymentData);
         }
         catch (Exception $e)
@@ -157,20 +155,15 @@ class QuickPayService
         $parameters = [
             'variables' => $variables
         ];
-        
         $resource = sprintf('/payments/%s', $paymentId);
-        
         $this->log(Logger::DEBUG, 'payment update requested', $parameters);
         //Update payment
         $paymentData = $this->request(self::METHOD_PATCH, $resource, $parameters);
         $this->log(Logger::INFO, 'payment updated', $paymentData);
-        
         $payment = $this->getPayment($paymentId);
-        
         //Update amount to pay
         $payment->setAmount($amount);
         Shopware()->Models()->flush($payment);
-        
         return $payment;
     }
     
@@ -184,8 +177,7 @@ class QuickPayService
     {
         /** @var QuickPayPayment $payment */
         $payment = Shopware()->Models()->find(QuickPayPayment::class, $paymentId);
-        
-        if(empty($payment))
+        if(empty($payment))    
             return null;
         
         return $payment;
@@ -200,7 +192,6 @@ class QuickPayService
     public function registerCallback($payment, $data)
     {
         $operations = $payment->getOperations();
-        
         //Sort Operations by Id
         $operationsById = array();
         /** @var QuickPayPaymentOperation $operation */
@@ -209,7 +200,6 @@ class QuickPayService
             if($operation->getOperationId() != null)
                 $operationsById[$operation->getOperationId()] = $operation;
         }
-
         //update operations with data from the callback
         foreach($data->operations as $operation)
         {
@@ -221,13 +211,11 @@ class QuickPayService
                 $operationsById[$operation->id]->update($operation);
             }
         }
-        
         //save changes made to the operations
         Shopware()->Models()->flush($operationsById);
         
         $this->updateStatus($payment);
     }
-
     /**
      * Create a Quickpay payment operation
      * 
@@ -239,15 +227,15 @@ class QuickPayService
     public function handleNewOperation($payment, $data, $updateStatus = true)
     {
         $operation = new QuickPayPaymentOperation($payment, $data);
+
         //Persist the new operation
         Shopware()->Models()->persist($operation);
         Shopware()->Models()->flush($operation);
-        
+
         if($updateStatus)
         {
             $this->updateStatus($payment);
         }
-        
         return $operation;
     }
             
@@ -263,9 +251,9 @@ class QuickPayService
         $amountCaptured = 0;
         $amountRefunded = 0;
         $status = QuickPayPayment::PAYMENT_CREATED;
-        
         $repository = Shopware()->Models()->getRepository(QuickPayPaymentOperation::class);
         $operations = $repository->findBy(['payment' => $payment], ['createdAt' => 'ASC', 'id' => 'ASC']);
+        
         
         /** @var QuickPayPaymentOperation $operation */
         foreach($operations as $operation)
@@ -277,25 +265,20 @@ class QuickPayService
                     if($operation->isSuccessfull())
                     {
                         $amountAuthorized += $operation->getAmount();
-
                         if($amount <= $amountAuthorized)
                         {
                             $status = QuickPayPayment::PAYMENT_FULLY_AUTHORIZED;
                         }
                     }
                     break;
-
                 case 'capture_request':
                     
                     $status = QuickPayPayment::PAYMENT_CAPTURE_REQUESTED;
-
                     break;
-
                 case 'capture':
                     if($operation->isSuccessfull())
                     {
                         $amountCaptured += $operation->getAmount();
-
                         if($amount <= $amountCaptured)
                         {
                             $status = QuickPayPayment::PAYMENT_FULLY_CAPTURED;
@@ -317,12 +300,9 @@ class QuickPayService
                         }
                     }
                     break;
-
                 case 'cancel_request':
                     $status = QuickPayPayment::PAYMENT_CANCEL_REQUSTED;
-
                     break;
-
                 case 'cancel':
                     if($operation->isSuccessfull())
                     {
@@ -332,20 +312,14 @@ class QuickPayService
                     {
                         $status = QuickPayPayment::PAYMENT_FULLY_AUTHORIZED;
                     }
-
                     break;
-
                 case 'refund_request':
-
                     $status = QuickPayPayment::PAYMENT_REFUND_REQUSTED;
-
                     break;
-
                 case 'refund':
                     if($operation->isSuccessfull())
                     {
                         $amountRefunded += $operation->getAmount();
-
                         if($amountCaptured <= $amountRefunded)
                         {
                             $status = QuickPayPayment::PAYMENT_FULLY_REFUNDED;
@@ -373,25 +347,19 @@ class QuickPayService
                             }
                         }
                     }
-
                     break;
-
                 case 'checksum_failure':
                 case 'test_mode_violation':
                     $status = QuickPayPayment::PAYMENT_INVALIDATED;
                     break;
-
                 default:
                     break;
             }
-
         }
-        
         $payment->setAmountAuthorized($amountAuthorized);
         $payment->setAmountCaptured($amountCaptured);
         $payment->setAmountRefunded($amountRefunded);
         $payment->setStatus($status);
-        
         //Save updates to the payment object
         Shopware()->Models()->flush($payment);
     }
@@ -454,10 +422,8 @@ class QuickPayService
         $this->log(Logger::DEBUG, 'payment link creation requested', $parameters);
         $paymentLink = $this->request(self::METHOD_PUT, $resource, $parameters);
         $this->log(Logger::INFO, 'payment link created', $paymentLink);
-
         return $paymentLink->url;
     }
-
     /**
      * send a capture request to the QuickPay API
      * 
@@ -471,21 +437,17 @@ class QuickPayService
         {
             throw new Exception('Invalid payment state');
         }
-        
         if($amount <= 0 || $amount > $payment->getAmountAuthorized() - $payment->getAmountCaptured())
         {
             throw new Exception('Invalid amount');
         }
-        
         $operation = $this->handleNewOperation($payment, (object) array(
             'type' => 'capture_request',
             'id' => null,
             'amount' => $amount
         ));
-        
         try
         {
-        
             $resource = sprintf('/payments/%s/capture', $payment->getId());
             $this->log(Logger::DEBUG, 'payment capture requested');
             $paymentData = $this->request(self::METHOD_POST, $resource, [
@@ -510,9 +472,7 @@ class QuickPayService
             
             throw $e;
         }
-
     }
-
     /**
      * send a capture request to the QuickPay API
      * 
@@ -526,21 +486,17 @@ class QuickPayService
         {
             throw new Exception('Invalid payment state');
         }
-        
         if($payment->getAmountCaptured() > 0)
         {
             throw new Exception('Payment already (partly) captured');
         }
-        
         $operation = $this->handleNewOperation($payment, (object) array(
             'type' => 'cancel_request',
             'id' => null,
             'amount' => 0
         ));
-        
         try
         {
-
             $resource = sprintf('/payments/%s/cancel', $payment->getId());
             $this->log(Logger::DEBUG, 'payment cancellation requested');
             $paymentData = $this->request(self::METHOD_POST, $resource, [], 
@@ -563,7 +519,6 @@ class QuickPayService
             throw $e;
         }        
     }
-
     /**
      * send a capture request to the QuickPay API
      * 
@@ -578,19 +533,15 @@ class QuickPayService
         {
             throw new Exception('Invalid payment state');
         }
-        
         if($amount <= 0 || $amount > $payment->getAmountCaptured() - $payment->getAmountRefunded())
         {
             throw new Exception('Invalid amount');
-        
         }
-        
         $operation = $this->handleNewOperation($payment, (object) array(
             'type' => 'refund_request',
             'id' => null,
             'amount' => $amount
         ));
-        
         try
         {
             
@@ -608,7 +559,6 @@ class QuickPayService
                     ])
                 ]);
             $this->log(Logger::DEBUG, 'payment refunded', $paymentData);
-
         } catch (Exception $ex) {
             Shopware()->Models()->remove($operation);
             Shopware()->Models()->flush($operation);
@@ -631,9 +581,7 @@ class QuickPayService
     private function request($method = self::METHOD_POST, $resource, $params = [], $headers = [])
     {
         $ch = curl_init();
-
         $url = $this->baseUrl . $resource;
-        
         //Set CURL options
         $options = [
             CURLOPT_URL            => $url,
@@ -644,32 +592,24 @@ class QuickPayService
             CURLOPT_CUSTOMREQUEST  => $method,
             CURLOPT_POSTFIELDS     => http_build_query($params, '', '&'),
         ];
-
         curl_setopt_array($ch, $options);
-
         $this->log(Logger::DEBUG, 'request sent', $options);
         //Get response
         $result = curl_exec($ch);
         $responseCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $this->log(Logger::DEBUG, 'request finished', ['code' => $responseCode, 'response' => $result]);
-        
         curl_close($ch);
-
         //Validate reponsecode
         if (! in_array($responseCode, [200, 201, 202])) {
             throw new Exception('Invalid gateway response ' . $result);
         }
-
         $response = json_decode($result);
-
         //Check for JSON errors
         if (! $response || (json_last_error() !== JSON_ERROR_NONE)) {
             throw new Exception('Invalid json response');
         }
-
         return $response;
     }
-
     /**
      * Get CURL headers
      *
@@ -683,15 +623,12 @@ class QuickPayService
             'Accept-Version: v10',
             'Accept: application/json'
         ];
-        
         foreach ($headers as $key => $value)
         {
             $result[] = $key. ': '. $value;
         }
-        
         return $result;
     }
-
     /**
      * Get API key from config
      *
@@ -701,7 +638,6 @@ class QuickPayService
     {
         return Shopware()->Config()->getByNamespace('QuickPayPayment', 'public_key');
     }
-
     /**
      * Get language code
      *
@@ -710,7 +646,6 @@ class QuickPayService
     private function getLanguageCode()
     {
         $locale = Shopware()->Shop()->getLocale()->getLocale();
-
         return substr($locale, 0, 2);
     }
     

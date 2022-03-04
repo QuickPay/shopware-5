@@ -4,11 +4,9 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
     extend: 'Ext.container.Container',
     
     alias: 'widget.order-quickpay-panel',
-
     cls: Ext.baseCSSPrefix + 'order-quickpay-panel',
     
     id: 'order-quickpay-panel',
-
     padding: 10,
     
     snippets: {
@@ -19,25 +17,17 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
         reloadButtonText: '{s name=order/reload_button/text}Reload{/s}',
         gridTitle: '{s name=order/grid/title}Payment History{/s}',
     },
-
     initComponent: function() {
         var me = this;
-
         me.operationStore = Ext.create('Ext.data.Store', { model: 'Shopware.apps.Order.QuickPay.model.Operation' });
-
         me.title = me.snippets.title;
-
         me.registerEvents();
-
         me.items = [
             me.createToolbar(),
             me.createGrid()
         ];
-        
-        me.quickpayPaymentStore.on('paymentUpdate', me.onPaymentUpdate, me);
-                
+        me.quickpayPaymentStore.on('paymentUpdate', me.onPaymentUpdate, me); 
         me.callParent(arguments);
-        
         me.update();
     
     },
@@ -45,11 +35,8 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
     beforeDestroy: function()
     {
         var me = this;
-        
         me.operationStore.clearData();
-        
         me.quickpayPaymentStore.un('paymentUpdate', me.onPaymentUpdate, me);
-        
         me.callParent(arguments);
     },
     
@@ -62,20 +49,15 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
             'reload'
         );
     },
-
     getPayment: function()
     {
         var me = this;
-        
         return me.quickpayPaymentStore.getById(me.record.get('quickpay_payment_id'));
     },
-
     getPaymentData: function()
     {
         var me = this;
-        
         var payment = me.getPayment();
-        
         return {
             id: payment.get('id'),
             amountAuthorized: payment.get('amountAuthorized'),
@@ -83,23 +65,18 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
             amountRefunded: payment.get('amountRefunded')
         };
     },
-
     onPaymentUpdate: function(id)
     {
         var me = this;
-        
         if(id === me.record.get('quickpay_payment_id'))
         {
             me.update();
         }
     },
-
     createToolbar: function()
     {
         var me = this;
-
         var status = 9;//me.record.raw.quickpay.status * 1;
-
         me.captureButton = Ext.create('Ext.button.Button', {
             iconCls: 'sprite-tick',
             text: me.snippets.captureButtonText,
@@ -109,7 +86,6 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
                 me.fireEvent('showCaptureConfirmWindow', me.getPaymentData(), me.record, me);
             }
         });
-
         me.cancelButton = Ext.create('Ext.button.Button', {
             iconCls: 'sprite-cross',
             text: me.snippets.cancelButtonText,
@@ -119,7 +95,6 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
                 me.fireEvent('showCancelConfirmWindow', me.getPaymentData(), me.record, me);
             }
         });
-
         me.refundButton = Ext.create('Ext.button.Button', {
             iconCls: 'sprite-arrow-return-180-left',
             text: me.snippets.refundButtonText,
@@ -129,7 +104,6 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
                 me.fireEvent('showRefundConfirmWindow', me.getPaymentData(), me.record, me);
             }
         });
-        
         me.reloadButton = Ext.create('Ext.button.Button', {
             iconCls: 'sprite-arrow-circle-135-left',
             text: me.snippets.reloadButtonText,
@@ -138,7 +112,6 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
                 me.reload();
             }
         });
-
         me.toolbar = Ext.create('Ext.toolbar.Toolbar', {
             dock: 'top',
             ui: 'shopware-ui',
@@ -154,24 +127,18 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
                 me.reloadButton
             ]
         });
-        
         return me.toolbar;
     },
-
     operationFinished(operation, cancelled)
     {
         var me = this;
-        
         me.reload();
     },
-
     reload: function()
     {
         var me = this;
-        
         me.fireEvent('reload', me.record.get('quickpay_payment_id'));
     },
-
     createGrid: function()
     {
         var me = this;
@@ -187,16 +154,12 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
                 'margin-bottom': '10px'
             }
         });
-        
         return me.grid;
     },
-
     update: function()
     {
         var me = this;
-        
         var payment = me.getPayment();
-        
         if(!payment)
         {
             me.setDisabled(true);
@@ -208,22 +171,17 @@ Ext.define('Shopware.apps.QuickPay.view.detail.QuickPay',
             me.updateGrid(payment);
         }
     },
-
     updateToolbar: function(payment)
     {
         var me = this;
-        
         var status = payment.get('status');
-        
         me.captureButton.setDisabled(status !== 5 && status !== 12); //Only FULLY_AUTHORIZED or PARTLY_CAPTURED
         me.cancelButton.setDisabled(status >= 10); //No capture requested yet
         me.refundButton.setDisabled(status !== 12 && status !== 15 && status !== 32); //Only PARTLY_CAPTURED, FULLY_CAPTURED and PARTLY_REFUNDED
     },
-
     updateGrid: function(payment)
     {
         var me = this;
-        
         me.operationStore.removeAll();
         payment.operations().each((operation) => { me.operationStore.add(operation) });
     }

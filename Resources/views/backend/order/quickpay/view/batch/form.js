@@ -1,8 +1,6 @@
 //{namespace name="plugins/quickpay"}
-
 Ext.define('Shopware.apps.Order.QuickPay.view.batch.Form', {
     override: 'Shopware.apps.Order.view.batch.Form',
-
     quickpaySnippets: {
         action: {
             capture: '{s name=order/batch/capture}Capture payment(s){/s}',
@@ -11,15 +9,12 @@ Ext.define('Shopware.apps.Order.QuickPay.view.batch.Form', {
             label: '{s name=order/batch/action}QuickPay action{/s}'
         }
     },
-
     /**
      * @override
      */
     createFormFields: function () {
         var me = this;
-
         var fields = me.callParent(arguments);
-        
         return Ext.Array.insert(fields, 4, [me.createQuickpayActionField()]);
     },
     
@@ -41,7 +36,6 @@ Ext.define('Shopware.apps.Order.QuickPay.view.batch.Form', {
                     ['refund', me.quickpaySnippets.action.refund]
                 ]
             });
-
         return Ext.create('Ext.form.field.ComboBox', {
             name: 'quickpayAction',
             triggerAction: 'all',

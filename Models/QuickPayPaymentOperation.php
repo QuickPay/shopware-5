@@ -1,29 +1,21 @@
 <?php
-
+/*
+ * created on 26/02/2020 :  by  -  akshay Nihare 
+ * https://github.com/akshaynikhare
+ * 
+ */
 namespace QuickPayPayment\Models;
-
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use Shopware\Components\Model\ModelEntity;
 use Shopware\Models\Customer\Customer;
-
 /**
  * @ORM\Entity
  * @ORM\Table(name="quickpay_payment_operations")
  */
 class QuickPayPaymentOperation extends ModelEntity
 {
-    /**
-     * @param QuickPayPayment $payment
-     * @param mixed $data
-     */
-    public function __construct($payment, $data)
-    {
-        $this->payment = $payment;
-        $this->createdAt = new DateTime();
-        $this->update($data);
-    }
-    
+
     /**
      * @ORM\Id
      * @ORM\Column(name="id", type="integer")
@@ -54,14 +46,12 @@ class QuickPayPaymentOperation extends ModelEntity
      * @var \DateTime Date of creation
      */
     protected $createdAt;
-
     /**
      * @ORM\Column(type="string", name="type")
      * 
      * @var string type of the operations
      */
     protected $type;
-
     /**
      * @ORM\Column(type="string", name="status", nullable=true)
      * 
@@ -79,6 +69,22 @@ class QuickPayPaymentOperation extends ModelEntity
     const PAYMENT_OPERATION_GATEWAY_ERROR = '50000';
     const PAYMENT_OPERATION_COMMUNICATIONS_ERROR = '50300';
     
+
+
+    /**
+     * @param QuickPayPayment $payment
+     * @param mixed $data
+     */
+    public function __construct($payment, $data)
+    {
+        $this->payment = $payment;
+        $this->createdAt = new DateTime();
+        $this->update($data);
+    }
+    
+
+
+
     /**
      * @ORM\Column(name="amount", type="integer")
      *
@@ -123,15 +129,7 @@ class QuickPayPaymentOperation extends ModelEntity
         return $this->operationId;
     }
     
-    /**
-     * Get the date of creation
-     * 
-     * @return \DateTime
-     */
-    public function getCreatedAt()
-    {
-        return $this->createdAt;
-    }
+
     
     /**
      * Get the type of the operation
@@ -177,6 +175,16 @@ class QuickPayPaymentOperation extends ModelEntity
         ]) === false;
     }
     
+    /**
+     * Get the date of creation
+     * 
+     * @return \DateTime
+     */
+    public function getCreatedAt()
+    {
+        return $this->createdAt;
+    }
+
     /**
      * Get the amount fo the operation
      * 

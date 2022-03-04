@@ -3,5 +3,19 @@
   "type": "shopware-frontend-plugin",
   "require": {
     "composer/installers": "~1.0"
+  },
+  "authors": [
+    {
+      "name": "Akshay Nikhare",
+      "email": "akshay.victrans@gmail.com",
+      "homepage": "https://github.com/akshaynikhare",
+      "role": "Developer"
+    }
+  ],
+  "extra": {
+    "supportLink": {
+      "de-DE": "https://github.com/akshaynikhare",
+      "en-GB": "https://github.com/akshaynikhare"
+    }
   }
 }

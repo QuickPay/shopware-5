@@ -4,7 +4,7 @@
            xsi:schemaLocation="http://symfony.com/schema/dic/services http://symfony.com/schema/dic/services/services-1.0.xsd">
     <services>
         <service id="quickpay_payment.quickpay_service"
-                 class="QuickPayPayment\Components\QuickPayService">
+                 class="QuickPayPayment\Components\QuickPayService" public="true">
             <argument type="service" id="quickpay_payment.logger"/>
         </service>
         <service id="quickpay_payment.subscriber.backend"

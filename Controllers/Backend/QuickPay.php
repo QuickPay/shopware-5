@@ -1,8 +1,11 @@
 <?php
-
+/*
+ * created on 26/02/2020 :  by  -  akshay Nihare 
+ * https://github.com/akshaynikhare
+ * 
+ */
 use QuickPayPayment\Models\QuickPayPayment;
 use QuickPayPayment\Models\QuickPayPaymentOperation;
-
 class Shopware_Controllers_Backend_QuickPay extends Shopware_Controllers_Backend_Application
 {
     
@@ -13,7 +16,6 @@ class Shopware_Controllers_Backend_QuickPay extends Shopware_Controllers_Backend
     function getList($offset, $limit, $sort = array(), $filter = array(), array $wholeParams = array()): array
     {
         $list = parent::getList($offset, $limit, $sort, $filter, $wholeParams);
-        
         if($details['success'])
         {
             foreach ($list['data'] as &$entry)
@@ -21,30 +23,50 @@ class Shopware_Controllers_Backend_QuickPay extends Shopware_Controllers_Backend
                 $entry['operations'] = $this->getOperations($entry['id']);
             }
         }
-        
         return $list;
     }
-
-
-    function getDetail($id): array
+    
+    public function refundAction()
     {
-        $detail = parent::getDetail($id);
-        
-        if($detail['success'] && !empty($detail['data']))
-        {
-            $detail['data']['operations'] = $this->getOperations($id);
+        try {
+            $paymentId = $this->Request()->getParam('id');
+            if(!$paymentId)
+            {
+                $this->View()->success = false;
+                $this->View()->message = "No payment Id";
+            }
+            else
+            {
+                /** @var \QuickPayPayment\Components\QuickPayService $service */
+                $service = $this->get('quickpay_payment.quickpay_service');
+                
+                $payment = $service->getPayment($paymentId);
+                if($payment)
+                {
+                    $amount = $this->Request()->getParam('amount');
+                    $amount = is_numeric($amount) ? intval($amount) : 0;
+                    $service->requestRefund($payment, $amount);
+                    $this->View()->success = true;
+                }
+                else
+                {
+                    $this->View()->success = false;
+                    $this->View()->message = "Invalid payment id";                    
+                }
+            }
         }
-        
-        return $detail;
+        catch(Exception $e)
+        {
+            $this->View()->success = false;
+            $this->View()->message = $e->getMessage();
+        }
     }
     
     protected function getOperations($id)
     {
         try {
             $db = Shopware()->Db();
-
             return $db->fetchAll("SELECT id, created_at as createdAt, type, status, amount FROM quickpay_payment_operations WHERE payment_id = ? ORDER BY created_at DESC, id DESC", [$id], Zend_Db::FETCH_ASSOC);
-
         }
         catch(Exception $e)
         {
@@ -71,9 +93,7 @@ class Shopware_Controllers_Backend_QuickPay extends Shopware_Controllers_Backend
                 {
                     $amount = $this->Request()->getParam('amount');
                     $amount = is_numeric($amount) ? intval($amount) : 0;
-
                     $service->requestCapture($payment, $amount);
-
                     $this->View()->success = true;
                 }
                 else
@@ -90,6 +110,16 @@ class Shopware_Controllers_Backend_QuickPay extends Shopware_Controllers_Backend
         }
     }
     
+    function getDetail($id): array
+    {
+        $detail = parent::getDetail($id);
+        if($detail['success'] && !empty($detail['data']))
+        {
+            $detail['data']['operations'] = $this->getOperations($id);
+        }
+        return $detail;
+    }
+
     public function cancelAction()
     {
         try {
@@ -108,9 +138,7 @@ class Shopware_Controllers_Backend_QuickPay extends Shopware_Controllers_Backend
                 if($payment)
                 {
                     $service->requestCancel($payment);
-
                     $this->View()->success = true;
-
                 }
                 else
                 {
@@ -126,41 +154,5 @@ class Shopware_Controllers_Backend_QuickPay extends Shopware_Controllers_Backend
         }
     }
     
-    public function refundAction()
-    {
-        try {
-            $paymentId = $this->Request()->getParam('id');
-            if(!$paymentId)
-            {
-                $this->View()->success = false;
-                $this->View()->message = "No payment Id";
-            }
-            else
-            {
-                /** @var \QuickPayPayment\Components\QuickPayService $service */
-                $service = $this->get('quickpay_payment.quickpay_service');
-                
-                $payment = $service->getPayment($paymentId);
-                if($payment)
-                {
-                    $amount = $this->Request()->getParam('amount');
-                    $amount = is_numeric($amount) ? intval($amount) : 0;
-
-                    $service->requestRefund($payment, $amount);
-
-                    $this->View()->success = true;
-                }
-                else
-                {
-                    $this->View()->success = false;
-                    $this->View()->message = "Invalid payment id";                    
-                }
-            }
-        }
-        catch(Exception $e)
-        {
-            $this->View()->success = false;
-            $this->View()->message = $e->getMessage();
-        }
-    }
+  
 }

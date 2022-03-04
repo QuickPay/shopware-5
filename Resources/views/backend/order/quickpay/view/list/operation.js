@@ -44,16 +44,13 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.Operation',
     initComponent: function()
     {
         var me = this;
-
         me.columns = me.getColumns();
-
         me.callParent(arguments);
     },
     
     getColumns: function()
     {
         var me = this;
-
         return [
             {
                 header: me.snippets.columns.createdAt,
@@ -106,7 +103,6 @@ Ext.define('Shopware.apps.Order.QuickPay.view.list.Operation',
         if ( date === Ext.undefined ) {
             return date;
         }
-
         return Ext.util.Format.date(date) + ' ' + Ext.util.Format.date(date, timeFormat);    },
     
     amountRenderer: function(amount)

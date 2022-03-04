@@ -1,13 +1,15 @@
 <?php
-
+/*
+ * created on 26/02/2020 :  by  -  akshay Nihare 
+ * https://github.com/akshaynikhare
+ * 
+ */
 namespace QuickPayPayment\Models;
-
 use DateTime;
 use Doctrine\ORM\Mapping as ORM;
 use Shopware\Components\Model\ModelEntity;
 use Shopware\Models\Customer\Customer;
 use Shopware\Models\Order\Order;
-
 /**
  * @ORM\Entity
  * @ORM\Table(name="quickpay_payments")
@@ -50,7 +52,6 @@ class QuickPayPayment extends ModelEntity
      * @var \DateTime Date of creation
      */
     protected $createdAt;
-
     /**
      * @ORM\ManyToOne(targetEntity="Shopware\Models\Customer\Customer")
      * @ORM\JoinColumn(name="customer_id", referencedColumnName="id", nullable=false)
@@ -58,7 +59,6 @@ class QuickPayPayment extends ModelEntity
      * @var Customer Customer linked to the order
      */
     protected $customer;
-
     /**
      * @ORM\Column(type="integer", name="status")
      * 
@@ -112,7 +112,6 @@ class QuickPayPayment extends ModelEntity
      * @var integer Amount authorized through QuickPay
      */
     protected $amountAuthorized;
-
     /**
      * @ORM\Column(name="amount_captured", type="integer")
      *
@@ -150,7 +149,6 @@ class QuickPayPayment extends ModelEntity
     {
         return $this->id;
     }
-
     /**
      * Get the order id used by QuickPay
      * 
@@ -222,7 +220,6 @@ class QuickPayPayment extends ModelEntity
         {
             return null;
         }
-        
         $rep = Shopware()->Models()->getRepository(Order::class);
         return $rep->findOneBy(['number' => $this->orderNumber]);
     }
@@ -366,5 +363,4 @@ class QuickPayPayment extends ModelEntity
     {
         $this->link = $link;
     }
-
 }

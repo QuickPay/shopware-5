@@ -1,12 +1,15 @@
 <?php
-
+/*
+ * created on 26/02/2020 :  by  -  akshay Nihare 
+ * https://github.com/akshaynikhare
+ * 
+ */
 use Enlight_Components_Session_Namespace;
 use QuickPayPayment\Components\QuickPayService;
 use QuickPayPayment\Models\QuickPayPayment;
 use Shopware\Components\CSRFWhitelistAware;
 use Shopware\Components\Logger;
 use Shopware\Models\Order\Status;
-
 class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Frontend_Payment implements CSRFWhitelistAware
 {
     /**
@@ -35,7 +38,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
      */
     public function redirectAction()
     {
-
         try {
             
             $this->log(Logger::DEBUG, 'redirect action called');
@@ -65,7 +67,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             {
                 //Get the payment associated with the payment id from the session
                 $payment = $this->service->getPayment($paymentId);
-
                 //Check if the payment is still in its initial state
                 if($payment->getStatus() == QuickPayPayment::PAYMENT_CREATED)
                 {
@@ -97,7 +98,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 $persister = $this->get('basket_persister');
                 $persister->delete($signature);
                 $this->log(Logger::DEBUG, 'previous basket deleted in redirect', ['signature' => $signature]);
-
             }
             //persist the current basket
             $payment->setBasketSignature($this->persistBasket());
@@ -108,7 +108,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             
             $user = $this->getUser();
             $email = $user['additional']['user']['email'];
-
             //Create payment link
             $paymentLink = $this->service->createPaymentLink(
                 $payment,
@@ -129,7 +128,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             die($e->getMessage());
         }
     }
-
     /**
      * Handle callback
      */
@@ -137,16 +135,12 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
     {
         // Prevent error from missing template
         $this->Front()->Plugins()->ViewRenderer()->setNoRender();
-
         //Validate & save order
         $requestBody = $this->Request()->getRawBody();
         $data = json_decode($requestBody);
-        
         $this->log(Logger::DEBUG, 'callback action called', $data);
-
         //By default return error code
         $responseCode = 400;
-        
         if ($data)
         {
             
@@ -159,7 +153,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 $key = Shopware()->Config()->getByNamespace('QuickPayPayment', 'private_key');
                 $checksum = hash_hmac('sha256', $requestBody, $key);
                 $submittedChecksum = $this->Request()->getServer('HTTP_QUICKPAY_CHECKSUM_SHA256');
-
                 //Validate checksum
                 if ($checksum === $submittedChecksum)
                 {
@@ -221,39 +214,30 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 $this->log(Logger::INFO, 'Unkown payment id', json_decode($requestBody, true));
             }
         }
-
         $this->Response()->setHttpResponseCode($responseCode);
     }
-
     /**
      * Handle payment success
      */
     public function successAction()
     {
         $paymentId = $this->session->offsetGet('quickpay_payment_id');
-        
         $this->log(Logger::DEBUG, 'success action called', ['payment' => $paymentId]);
-        
         if(empty($paymentId))
         {
             $this->redirect(['controller' => 'checkout', 'action' => 'confirm']);    
             return;
         }
-
         $payment = $this->service->getPayment($paymentId);
         $this->log(Logger::DEBUG, 'persisting order in success action', ['payment' => $paymentId]);
         $this->checkAndPersistOrder($payment, true);
         $this->log(Logger::DEBUG, 'order persisted in success action', ['payment' => $paymentId]);
-        
         //Remove ID from session
-        $this->session->offsetUnset('quickpay_payment_id');
         
         //Redirect to finish
         $this->redirect(['controller' => 'checkout', 'action' => 'finish', 'sUniqueID' => $payment->getId()]);
-
         return;
     }
-
     /**
      * Handle payment cancel
      */
@@ -261,7 +245,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
     {
         $this->redirect(['controller' => 'checkout', 'action' => 'confirm']);
     }
-
     /**
      * Get continue url
      *
@@ -275,7 +258,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             'forceSecure' => true
         ]);
     }
-
     /**
      * Get cancel url
      *
@@ -289,7 +271,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             'forceSecure' => true
         ]);
     }
-
     /**
      * Get callback url
      *
@@ -303,7 +284,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             'forceSecure' => true
         ]);
     }
-
     /**
      * Returns a list with actions which should not be validated for CSRF protection
      *
@@ -323,7 +303,6 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
     {
         //Check is test mode is enabled
         $testmode = Shopware()->Config()->getByNamespace('QuickPayPayment', 'testmode');
-
         //Check if test_mode property matches the configuration
         return (boolval($testmode) == boolval($payment->test_mode));
     }
