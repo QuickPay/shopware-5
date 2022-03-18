@@ -396,6 +396,7 @@ class QuickPayService
      * Create payment link
      *
      * @param QuickPayPayment $payment QuickPay payment
+     * @param string $paymentMethod
      * @param double $amount invoice amount of the order
      * @param string $email Mail-address of the customer
      * @param string $continueUrl redirect URL in case of success
@@ -404,7 +405,7 @@ class QuickPayService
      *
      * @return string link for QuickPay payment
      */
-    public function createPaymentLink($payment, $email, $continueUrl, $cancelUrl, $callbackUrl)
+    public function createPaymentLink($payment,$PaymentMethods, $email, $continueUrl, $cancelUrl, $callbackUrl)
     {
         $resource = sprintf('/payments/%s/link', $payment->getId());
         $parameters = [
@@ -413,7 +414,8 @@ class QuickPayService
             'cancelurl'          => $cancelUrl,
             'callbackurl'        => $callbackUrl,
             'customer_email'     => $email,
-            'language'           => $this->getLanguageCode()
+            'language'           => $this->getLanguageCode(),
+            'payment_methods'    => $PaymentMethods
         ];
         $this->log(Logger::DEBUG, 'payment link creation requested', $parameters);
         $paymentLink = $this->request(self::METHOD_PUT, $resource, $parameters);

@@ -37,13 +37,39 @@ class QuickPayPayment extends Plugin
         /** @var \Shopware\Components\Plugin\PaymentInstaller $installer */
         $installer = $this->container->get('shopware.plugin_payment_installer');
         $options = [
-            'name' => 'quickpay_payment',
-            'description' => 'QuickPay',
+            'name' => 'quickpay_payment_creditcard',
+            'description' => 'QuickPay - creditcard',
             'action' => 'QuickPay/redirect',
             'active' => 0,
             'position' => 0,
             'additionalDescription' =>
-            '<img src="' . substr($urlResponse, 0, -8) . 'custom/plugins/QuickPayPayment/Resources/images/quickpay_logo.png"/>'
+            '<img src="' . substr($urlResponse, 0, -8) . 'custom/plugins/QuickPayPayment/Resources/images/quickpay_logo_creditcard.png"/>'
+                . '<div id="payment_desc">'
+                . 'Pay using the QuickPay payment service provider.'
+                . '</div>'
+        ];
+        $installer->createOrUpdate($context->getPlugin(), $options);
+        $options = [
+            'name' => 'quickpay_payment_klarnapayments',
+            'description' => 'QuickPay - klarnapayments',
+            'action' => 'QuickPay/redirect',
+            'active' => 0,
+            'position' => 0,
+            'additionalDescription' =>
+            '<img src="' . substr($urlResponse, 0, -8) . 'custom/plugins/QuickPayPayment/Resources/images/quickpay_logo_klarnapayments.png"/>'
+                . '<div id="payment_desc">'
+                . 'Pay using the QuickPay payment service provider.'
+                . '</div>'
+        ];
+        $installer->createOrUpdate($context->getPlugin(), $options);
+        $options = [
+            'name' => 'quickpay_payment_paypal',
+            'description' => 'QuickPay - Paypal',
+            'action' => 'QuickPay/redirect',
+            'active' => 0,
+            'position' => 0,
+            'additionalDescription' =>
+            '<img src="' . substr($urlResponse, 0, -8) . 'custom/plugins/QuickPayPayment/Resources/images/quickpay_logo_paypal.png"/>'
                 . '<div id="payment_desc">'
                 . 'Pay using the QuickPay payment service provider.'
                 . '</div>'
