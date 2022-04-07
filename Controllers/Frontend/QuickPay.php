@@ -44,10 +44,13 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             switch ($this->getPaymentShortName()) {
                 case 'quickpay_payment_creditcard':
                     $PaymentMethods = 'creditcard';
+                    break;
                 case 'quickpay_payment_klarnapayments':
                     $PaymentMethods = 'klarna-payments';
+                    break;
                 case 'quickpay_payment_paypal':
                     $PaymentMethods = 'paypal';
+                    break;
                 default:
                     $PaymentMethods = 'creditcard';
             }
@@ -57,13 +60,19 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             //Get current payment id if it exists in the session
             $paymentId = $this->session->offsetGet('quickpay_payment_id');
 
+            $this->log(Logger::DEBUG, '$paymentId->' . $paymentId);
             $amount = $this->getAmount() * 100; //Convert to cents
+
+            $this->log(Logger::DEBUG, '$amount->' . $amount);
 
             $variables = array(
                 'device' => $this->Request()->getDeviceType(),
                 'comment' => $this->session->offsetGet('sComment'),
                 'dispatchId' => $this->session->offsetGet('sDispatch')
             );
+
+            $this->log(Logger::DEBUG, '$variables->' .json_encode( $variables));
+
 
             if (empty($paymentId)) {
                 //Create new payment
@@ -75,11 +84,12 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
                 ]);
             } else {
                 //Get the payment associated with the payment id from the session
-                echo $paymentId;
-                echo 'asd';
+
                 $payment = $this->service->getPayment($paymentId);
-                var_dump($payment);
-                
+
+
+                $this->log(Logger::DEBUG, '$payment->' . json_encode($payment));
+
                 //Check if the payment is still in its initial state
                 if ($payment->getStatus() == QuickPayPayment::PAYMENT_CREATED) {
                     //Update existing QuickPay payment
@@ -136,7 +146,12 @@ class Shopware_Controllers_Frontend_QuickPay extends Shopware_Controllers_Fronte
             //Redirect to the payment page
             $this->redirect($paymentLink);
         } catch (Exception $e) {
-            die($e->getMessage());
+
+            echo 'There have been an unexped error ( ' .   $e->getMessage() . ' ).';
+            echo "<script> setTimeout(function(){   window.location.href = '/';  }, 5000);  </script>";
+            echo '<br><span>Please wait redirecting in <span id="time_count">5</span> second.';
+            echo '<br>or click here <a href="/">here</a>';
+            die();
         }
     }
     /**
